@@ -1,11 +1,8 @@
 c = Cgroup::CPU.new("test_group")
 
-c.rate = 50000
+c.rate = 20000
 c.attach
 
-while i != 10000000000
-  i++
-end
+c.loop("100000000000000000000000")
 
 c.close
-

@@ -54,12 +54,12 @@ static const struct mrb_data_type mrb_cgroup_context_type = {
     "mrb_cgroup_context", mrb_cgroup_context_free,
 };
 
-static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value self)
+static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value self, char *ctx_flag)
 {
     mrb_cgroup_context *c;
     mrb_value context;
 
-    context = mrb_iv_get(mrb, self, mrb_intern(mrb, "mrb_cgroup_context"));
+    context = mrb_iv_get(mrb, self, mrb_intern(mrb, ctx_flag));
     Data_Get_Struct(mrb, context, &mrb_cgroup_context_type, c);
     if (!c)
         mrb_raise(mrb, E_RUNTIME_ERROR, "get mrb_cgroup_context failed");
@@ -67,9 +67,9 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
     return c;
 }
 
-mrb_value mrb_cgroup_cpu_delete(mrb_state *mrb, mrb_value self)
+mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
 {
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self);
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
     cgroup_delete_cgroup(mrb_cg_cxt->cg, 1);
 
@@ -99,13 +99,50 @@ mrb_value mrb_cgroup_cpu_init(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value mrb_cgroup_cpu_rate(mrb_state *mrb, mrb_value self)
+mrb_value mrb_cgroup_cpu_cfs_quota_us(mrb_state *mrb, mrb_value self)
 {   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self);
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
     mrb_int cfs_quota_us;
     mrb_get_args(mrb, "i", &cfs_quota_us);
 
     cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.cfs_quota_us", cfs_quota_us);
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
+mrb_value mrb_cgroup_cpu_shares(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    mrb_int cfs_quota_us;
+    mrb_get_args(mrb, "i", &cfs_quota_us);
+
+    cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.shares", cfs_quota_us);
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
+mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+
     cgroup_create_cgroup(mrb_cg_cxt->cg, 1);
     mrb_iv_set(mrb
         , self
@@ -139,7 +176,7 @@ mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
 
 mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
 {   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self);
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
     mrb_value pid = mrb_nil_value();
     mrb_get_args(mrb, "|i", &pid);
 
@@ -148,6 +185,53 @@ mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
     } else {
         cgroup_attach_task_pid(mrb_cg_cxt->cg, mrb_fixnum(pid));
     }
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
+// blkio
+mrb_value mrb_cgroup_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    mrb_value dev_ma_mi, throttle_read_bps_device;
+    mrb_get_args(mrb, "oo", &dev_ma_mi, &throttle_read_bps_device);
+
+    cgroup_add_value_string(mrb_cg_cxt->cgc
+        , "blkio.throttle.read_bps_device"
+        , sprintf("%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(throttle_read_bps_device)
+    );
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
+mrb_value mrb_cgroup_blkio_throttle_write_bps_device(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    mrb_value dev_ma_mi, throttle_write_bps_device;
+    mrb_get_args(mrb, "oo", &dev_ma_mi, &throttle_write_bps_device);
+
+    cgroup_add_value_string(mrb_cg_cxt->cgc
+        , "blkio.throttle.write_bps_device"
+        , sprintf("%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(throttle_write_bps_device)
+    );
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -170,10 +254,23 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     struct RClass *cpu;
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
-    mrb_define_method(mrb, cpu, "delete", mrb_cgroup_cpu_delete, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "close", mrb_cgroup_cpu_delete, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "rate=", mrb_cgroup_cpu_rate, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "create", mrb_cgroup_create, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "open", mrb_cgroup_create, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "delete", mrb_cgroup_delete, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "close", mrb_cgroup_delete, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "cfs_quota_us=", mrb_cgroup_cpu_cfs_quota_us, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "shares=", mrb_cgroup_cpu_shares, ARGS_ANY());
     mrb_define_method(mrb, cpu, "attach", mrb_cgroup_attach, ARGS_ANY());
     mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
 
+    struct RClass *io;
+    cpu = mrb_define_class_under(mrb, cgroup, "BLKIO", mrb->object_class);
+    mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_io_init, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "create", mrb_cgroup_create, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "open", mrb_cgroup_create, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "delete", mrb_cgroup_delete, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "close", mrb_cgroup_delete, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "throttle_read_bps_device=", mrb_cgroup_blkio_throttle_read_bps_device, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "throttle_write_bps_device=", mrb_cgroup_blkio_throttle_write_bps_device, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "attach", mrb_cgroup_attach, ARGS_ANY());
 }

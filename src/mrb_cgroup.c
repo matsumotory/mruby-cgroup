@@ -36,6 +36,8 @@
 #include "mruby/string.h"
 #include "mruby/class.h"
 
+#define BLKIO_STRING_SIZE 64
+#define DONE mrb_gc_arena_restore(mrb, 0);
 
 typedef struct cgroup cgroup_t;
 typedef struct cgroup_controller cgroup_controller_t;
@@ -72,7 +74,9 @@ mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
 {
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-    cgroup_delete_cgroup(mrb_cg_cxt->cg, 1);
+    int ret = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1);
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_delete faild.");
 
     return self;
 }
@@ -84,9 +88,16 @@ mrb_value mrb_cgroup_cpu_init(mrb_state *mrb, mrb_value self)
 
     mrb_get_args(mrb, "o", &group_name);
 
-    cgroup_init();
+    int ret = cgroup_init();
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_init cpu failed");
+        
     mrb_cg_cxt->cg = cgroup_new_cgroup(RSTRING_PTR(group_name));
+    if (mrb_cg_cxt->cg == NULL)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");
     mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "cpu");
+    if (mrb_cg_cxt->cgc == NULL)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller failed");
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -107,9 +118,15 @@ mrb_value mrb_cgroup_blkio_init(mrb_state *mrb, mrb_value self)
 
     mrb_get_args(mrb, "o", &group_name);
 
-    cgroup_init();
+    int ret = cgroup_init();
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_init blkio failed");
     mrb_cg_cxt->cg = cgroup_new_cgroup(RSTRING_PTR(group_name));
+    if (mrb_cg_cxt->cg == NULL)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");
     mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "blkio");
+    if (mrb_cg_cxt->cgc == NULL)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller failed");
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -129,7 +146,9 @@ mrb_value mrb_cgroup_cpu_cfs_quota_us(mrb_state *mrb, mrb_value self)
     mrb_int cfs_quota_us;
     mrb_get_args(mrb, "i", &cfs_quota_us);
 
-    cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.cfs_quota_us", cfs_quota_us);
+    int ret = cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.cfs_quota_us", cfs_quota_us);
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_int64 cpu.cfs_quota_us failed");
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -149,7 +168,9 @@ mrb_value mrb_cgroup_cpu_shares(mrb_state *mrb, mrb_value self)
     mrb_int cfs_quota_us;
     mrb_get_args(mrb, "i", &cfs_quota_us);
 
-    cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.shares", cfs_quota_us);
+    int ret = cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.shares", cfs_quota_us);
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_int64 cpu.shares failed");
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -232,7 +253,7 @@ mrb_value mrb_cgroup_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_value se
     char *throttle_read_bps_device;
     mrb_get_args(mrb, "oo", &dev_ma_mi, &read_bps);
 
-    throttle_read_bps_device = (char *)malloc(sizeof(char *));
+    throttle_read_bps_device = (char *)malloc(BLKIO_STRING_SIZE);
     sprintf(throttle_read_bps_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(read_bps));
     cgroup_add_value_string(mrb_cg_cxt->cgc
         , "blkio.throttle.read_bps_device"
@@ -247,6 +268,7 @@ mrb_value mrb_cgroup_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_value se
             , (void *)mrb_cg_cxt)
         )
     );
+    //free(throttle_read_bps_device);
 
     return self;
 }
@@ -258,12 +280,14 @@ mrb_value mrb_cgroup_blkio_throttle_write_bps_device(mrb_state *mrb, mrb_value s
     char *throttle_write_bps_device;
     mrb_get_args(mrb, "oo", &dev_ma_mi, &write_bps);
 
-    throttle_write_bps_device = (char *)malloc(sizeof(char *));
+    throttle_write_bps_device = (char *)malloc(BLKIO_STRING_SIZE);
     sprintf(throttle_write_bps_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(write_bps));
-    cgroup_add_value_string(mrb_cg_cxt->cgc
+    int ret = cgroup_add_value_string(mrb_cg_cxt->cgc
         , "blkio.throttle.write_bps_device"
         , throttle_write_bps_device
     );
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_string blkio.throttle.write_bps_device failed");
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -273,6 +297,65 @@ mrb_value mrb_cgroup_blkio_throttle_write_bps_device(mrb_state *mrb, mrb_value s
             , (void *)mrb_cg_cxt)
         )
     );
+    //free(throttle_write_bps_device);
+
+    return self;
+}
+
+mrb_value mrb_cgroup_blkio_throttle_read_iops_device(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    mrb_value dev_ma_mi, read_iops;
+    char *throttle_read_iops_device;
+    mrb_get_args(mrb, "oo", &dev_ma_mi, &read_iops);
+
+    throttle_read_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
+    sprintf(throttle_read_iops_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(read_iops));
+    int ret = cgroup_add_value_string(mrb_cg_cxt->cgc
+        , "blkio.throttle.read_iops_device"
+        , throttle_read_iops_device
+    );
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_string blkio.throttle.read_iops_device failed");
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , (void *)mrb_cg_cxt)
+        )
+    );
+    //free(throttle_read_iops_device);
+
+    return self;
+}
+
+mrb_value mrb_cgroup_blkio_throttle_write_iops_device(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    mrb_value dev_ma_mi, write_iops;
+    char *throttle_write_iops_device;
+    mrb_get_args(mrb, "oo", &dev_ma_mi, &write_iops);
+
+    throttle_write_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
+    sprintf(throttle_write_iops_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(write_iops));
+    int ret = cgroup_add_value_string(mrb_cg_cxt->cgc
+        , "blkio.throttle.write_iops_device"
+        , throttle_write_iops_device
+    );
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_string blkio.throttle.write_iops_device failed");
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , (void *)mrb_cg_cxt)
+        )
+    );
+    //free(throttle_write_iops_device);
 
     return self;
 }
@@ -288,6 +371,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_class_method(mrb, cgroup, "delete", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_class_method(mrb, cgroup, "close", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_class_method(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());
+    DONE;
 
     struct RClass *cpu;
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);
@@ -300,6 +384,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, cpu, "shares=", mrb_cgroup_cpu_shares, ARGS_ANY());
     mrb_define_method(mrb, cpu, "attach", mrb_cgroup_attach, ARGS_ANY());
     mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
+    DONE;
 
     struct RClass *blkio;
     blkio = mrb_define_class_under(mrb, cgroup, "BLKIO", mrb->object_class);
@@ -310,5 +395,8 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, blkio, "close", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_method(mrb, blkio, "throttle_read_bps_device", mrb_cgroup_blkio_throttle_read_bps_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_write_bps_device", mrb_cgroup_blkio_throttle_write_bps_device, ARGS_ANY());
+    mrb_define_method(mrb, blkio, "throttle_read_iops_device", mrb_cgroup_blkio_throttle_read_iops_device, ARGS_ANY());
+    mrb_define_method(mrb, blkio, "throttle_write_iops_device", mrb_cgroup_blkio_throttle_write_iops_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "attach", mrb_cgroup_attach, ARGS_ANY());
+    DONE;
 }

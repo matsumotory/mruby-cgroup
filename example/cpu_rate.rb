@@ -1,8 +1,14 @@
-c = Cgroup::CPU.new("test_group")
+cpu = Cgroup::CPU.new("test_group")
+io = Cgroup::BLKIO.new("test_group")
 
-c.rate = 20000
-c.attach
+cpu.cfs_quota_us  = 30000
+io.throttle_read_bps_device "8:0", "200000000"
+io.throttle_write_bps_device "8:0", "100000000"
+cpu.create;
+io.open;
 
-c.loop("100000000000000000000000")
+#cpu.attach
+#c.loop("100000000000000000000000")
 
-c.close
+cpu.delete
+io.close

@@ -110,11 +110,12 @@ mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
         mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller failed");
 */
     int ret = cgroup_create_cgroup(mrb_cg_cxt->cg, 1);
-    if (ret) {
-        ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
-        if (ret)
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_create and cgroup_modify faild.");
-    }
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_create faild.");
+    //    ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
+    //    if (ret)
+    //        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_create and cgroup_modify faild.");
+    //}
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -270,9 +271,9 @@ mrb_value mrb_cgroup_cpu_cfs_quota_us(mrb_state *mrb, mrb_value self)
     mrb_int cfs_quota_us;
     mrb_get_args(mrb, "i", &cfs_quota_us);
 
-    int ret = cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.cfs_quota_us", cfs_quota_us);
+    int ret = cgroup_set_value_int64(mrb_cg_cxt->cgc, "cpu.cfs_quota_us", cfs_quota_us);
     if (ret)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_int64 cpu.cfs_quota_us failed");
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_set_value_int64 cpu.cfs_quota_us failed");
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -314,9 +315,9 @@ mrb_value mrb_cgroup_cpu_shares(mrb_state *mrb, mrb_value self)
     mrb_int shares;
     mrb_get_args(mrb, "i", &shares);
 
-    int ret = cgroup_add_value_int64(mrb_cg_cxt->cgc, "cpu.shares", shares);
+    int ret = cgroup_set_value_int64(mrb_cg_cxt->cgc, "cpu.shares", shares);
     if (ret)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_int64 cpu.shares failed");
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_set_value_int64 cpu.shares failed");
 
     mrb_iv_set(mrb
         , self

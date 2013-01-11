@@ -43,9 +43,14 @@
 typedef struct cgroup cgroup_t;
 typedef struct cgroup_controller cgroup_controller_t;
 typedef struct {
+    int new;
     cgroup_t *cg;
     cgroup_controller_t *cgc;
 } mrb_cgroup_context;
+
+//
+// private
+//
 
 static void mrb_cgroup_context_free(mrb_state *mrb, void *p)
 {
@@ -71,6 +76,58 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
     return c;
 }
 
+//
+// group
+//
+
+mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+
+    int ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_modify faild.");
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , (void *)mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
+mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+
+/*
+    mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "cpu");
+    if (mrb_cg_cxt->cgc == NULL)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller failed");
+*/
+    int ret = cgroup_create_cgroup(mrb_cg_cxt->cg, 1);
+    if (ret) {
+        ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
+        if (ret)
+            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_create and cgroup_modify faild.");
+    }
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , (void *)mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
 mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
 {
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
@@ -82,6 +139,44 @@ mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+mrb_value mrb_cgroup_exist_p(mrb_state *mrb, mrb_value self)
+{
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+
+    return (mrb_cg_cxt->new) ? mrb_false_value(): mrb_true_value();
+}
+
+//
+//task
+//
+
+mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    mrb_value pid = mrb_nil_value();
+    mrb_get_args(mrb, "|i", &pid);
+
+    if (mrb_nil_p(pid)) {
+        cgroup_attach_task(mrb_cg_cxt->cg);
+    } else {
+        cgroup_attach_task_pid(mrb_cg_cxt->cg, mrb_fixnum(pid));
+    }
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , (void *)mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
+//
+// init
+//
 mrb_value mrb_cgroup_cpu_init(mrb_state *mrb, mrb_value self)
 {   
     mrb_cgroup_context *mrb_cg_cxt = (mrb_cgroup_context *)malloc(sizeof(mrb_cgroup_context));
@@ -98,10 +193,12 @@ mrb_value mrb_cgroup_cpu_init(mrb_state *mrb, mrb_value self)
         mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");
     ret = cgroup_get_cgroup(mrb_cg_cxt->cg);
     if (ret) {
+        mrb_cg_cxt->new = 1;
         mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "cpu");
         if (mrb_cg_cxt->cgc == NULL)
             mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller cpu failed");
     } else {
+        mrb_cg_cxt->new = 0;
         mrb_cg_cxt->cgc = cgroup_get_controller(mrb_cg_cxt->cg, "cpu");
         if (mrb_cg_cxt->cgc == NULL)
             mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_get_controller cpu failed");
@@ -134,10 +231,12 @@ mrb_value mrb_cgroup_blkio_init(mrb_state *mrb, mrb_value self)
         mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");
     ret = cgroup_get_cgroup(mrb_cg_cxt->cg);
     if (ret) {
+        mrb_cg_cxt->new = 1;
         mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "blkio");
         if (mrb_cg_cxt->cgc == NULL)
             mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller blkio failed");
     } else {
+        mrb_cg_cxt->new = 0;
         mrb_cg_cxt->cgc = cgroup_get_controller(mrb_cg_cxt->cg, "blkio");
         if (mrb_cg_cxt->cgc == NULL)
             mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_get_controller blkio failed");
@@ -154,6 +253,10 @@ mrb_value mrb_cgroup_blkio_init(mrb_state *mrb, mrb_value self)
 
     return self;
 }
+
+//
+// cpu
+//
 
 mrb_value mrb_cgroup_cpu_cfs_quota_us(mrb_state *mrb, mrb_value self)
 {   
@@ -266,54 +369,6 @@ mrb_value mrb_cgroup_load(mrb_state *mrb, mrb_value self)
 }
 */
 
-mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-
-    int ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
-    if (ret)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_modify faild.");
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-
-    return self;
-}
-
-mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-
-/*
-    mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "cpu");
-    if (mrb_cg_cxt->cgc == NULL)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller failed");
-*/
-    int ret = cgroup_create_cgroup(mrb_cg_cxt->cg, 1);
-    if (ret) {
-        ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
-        if (ret)
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_create and cgroup_modify faild.");
-    }
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-
-    return self;
-}
-
 mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
 {
     long i = 0;
@@ -331,59 +386,9 @@ mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value pid = mrb_nil_value();
-    mrb_get_args(mrb, "|i", &pid);
-
-    if (mrb_nil_p(pid)) {
-        cgroup_attach_task(mrb_cg_cxt->cg);
-    } else {
-        cgroup_attach_task_pid(mrb_cg_cxt->cg, mrb_fixnum(pid));
-    }
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-
-    return self;
-}
-
+//
 // blkio
-/*
-mrb_value mrb_cgroup_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value dev_ma_mi, read_bps;
-    char *throttle_read_bps_device;
-    mrb_get_args(mrb, "oo", &dev_ma_mi, &read_bps);
-
-    throttle_read_bps_device = (char *)malloc(BLKIO_STRING_SIZE);
-    sprintf(throttle_read_bps_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(read_bps));
-    cgroup_add_value_string(mrb_cg_cxt->cgc
-        , "blkio.throttle.read_bps_device"
-        , throttle_read_bps_device
-    );
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_read_bps_device);
-
-    return self;
-}
-*/
+//
 
 mrb_value mrb_cgroup_get_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_value self)
 {   
@@ -753,6 +758,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
     mrb_define_method(mrb, cpu, "create", mrb_cgroup_create, ARGS_NONE());
     mrb_define_method(mrb, cpu, "modify", mrb_cgroup_modify, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
     //mrb_define_method(mrb, cpu, "load", mrb_cgroup_load, ARGS_NONE());
     mrb_define_method(mrb, cpu, "open", mrb_cgroup_create, ARGS_NONE());
     mrb_define_method(mrb, cpu, "delete", mrb_cgroup_delete, ARGS_NONE());
@@ -770,6 +776,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, blkio, "initialize", mrb_cgroup_blkio_init, ARGS_ANY());
     mrb_define_method(mrb, blkio, "create", mrb_cgroup_create, ARGS_NONE());
     mrb_define_method(mrb, blkio, "modify", mrb_cgroup_modify, ARGS_NONE());
+    mrb_define_method(mrb, blkio, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
     //mrb_define_method(mrb, blkio, "load", mrb_cgroup_load, ARGS_NONE());
     mrb_define_method(mrb, blkio, "open", mrb_cgroup_create, ARGS_NONE());
     mrb_define_method(mrb, blkio, "delete", mrb_cgroup_delete, ARGS_NONE());

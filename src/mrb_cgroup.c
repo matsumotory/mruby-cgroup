@@ -184,6 +184,26 @@ mrb_value mrb_cgroup_cpu_shares(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+mrb_value mrb_cgroup_load(mrb_state *mrb, mrb_value self)
+{   
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+
+    int ret = cgroup_load_cgroup(mrb_cg_cxt->cg, 1);
+    if (ret)
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_load faild.");
+    mrb_iv_set(mrb
+        , self
+        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_obj_value(Data_Wrap_Struct(mrb
+            , mrb->object_class
+            , &mrb_cgroup_context_type
+            , (void *)mrb_cg_cxt)
+        )
+    );
+
+    return self;
+}
+
 mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
 {   
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
@@ -377,6 +397,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
     mrb_define_method(mrb, cpu, "create", mrb_cgroup_create, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "load", mrb_cgroup_load, ARGS_NONE());
     mrb_define_method(mrb, cpu, "open", mrb_cgroup_create, ARGS_NONE());
     mrb_define_method(mrb, cpu, "delete", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_method(mrb, cpu, "close", mrb_cgroup_delete, ARGS_NONE());
@@ -390,6 +411,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     blkio = mrb_define_class_under(mrb, cgroup, "BLKIO", mrb->object_class);
     mrb_define_method(mrb, blkio, "initialize", mrb_cgroup_blkio_init, ARGS_ANY());
     mrb_define_method(mrb, blkio, "create", mrb_cgroup_create, ARGS_NONE());
+    mrb_define_method(mrb, blkio, "load", mrb_cgroup_load, ARGS_NONE());
     mrb_define_method(mrb, blkio, "open", mrb_cgroup_create, ARGS_NONE());
     mrb_define_method(mrb, blkio, "delete", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_method(mrb, blkio, "close", mrb_cgroup_delete, ARGS_NONE());

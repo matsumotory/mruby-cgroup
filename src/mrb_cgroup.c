@@ -200,8 +200,11 @@ mrb_value mrb_cgroup_cpu_init(mrb_state *mrb, mrb_value self)
     } else {
         mrb_cg_cxt->new = 0;
         mrb_cg_cxt->cgc = cgroup_get_controller(mrb_cg_cxt->cg, "cpu");
-        if (mrb_cg_cxt->cgc == NULL)
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_get_controller cpu failed");
+        if (mrb_cg_cxt->cgc == NULL) {
+            mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "cpu");
+            if (mrb_cg_cxt->cgc == NULL)
+                mrb_raise(mrb, E_RUNTIME_ERROR, "get_cgroup success, but add_controller cpu failed");
+        }
     }
     mrb_iv_set(mrb
         , self
@@ -238,8 +241,11 @@ mrb_value mrb_cgroup_blkio_init(mrb_state *mrb, mrb_value self)
     } else {
         mrb_cg_cxt->new = 0;
         mrb_cg_cxt->cgc = cgroup_get_controller(mrb_cg_cxt->cg, "blkio");
-        if (mrb_cg_cxt->cgc == NULL)
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_get_controller blkio failed");
+        if (mrb_cg_cxt->cgc == NULL) {
+            mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "blkio");
+            if (mrb_cg_cxt->cgc == NULL)
+                mrb_raise(mrb, E_RUNTIME_ERROR, "get_cgroup success, but add_controller blkio failed");
+        }
     }
     mrb_iv_set(mrb
         , self
@@ -747,40 +753,46 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     cgroup = mrb_define_module(mrb, "Cgroup");
     // experimental module function
     mrb_define_module_function(mrb, cgroup, "create", mrb_cgroup_create, ARGS_NONE());
-    mrb_define_class_method(mrb, cgroup, "open", mrb_cgroup_create, ARGS_NONE());
-    mrb_define_class_method(mrb, cgroup, "delete", mrb_cgroup_delete, ARGS_NONE());
-    mrb_define_class_method(mrb, cgroup, "close", mrb_cgroup_delete, ARGS_NONE());
-    mrb_define_class_method(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());
+    mrb_define_module_function(mrb, cgroup, "open", mrb_cgroup_create, ARGS_NONE());
+    mrb_define_module_function(mrb, cgroup, "delete", mrb_cgroup_delete, ARGS_NONE());
+    mrb_define_module_function(mrb, cgroup, "close", mrb_cgroup_delete, ARGS_NONE());
+    mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());
+    mrb_define_module_function(mrb, cgroup, "modify", mrb_cgroup_modify, ARGS_NONE());
+    mrb_define_module_function(mrb, cgroup, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
+    mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());
+    mrb_define_module_function(mrb, cgroup, "loop", mrb_cgroup_loop, ARGS_ANY());
     DONE;
 
     struct RClass *cpu;
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);
+    mrb_include_module(mrb, cpu, mrb_class_get(mrb, "Cgroup"));
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
-    mrb_define_method(mrb, cpu, "create", mrb_cgroup_create, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "modify", mrb_cgroup_modify, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
+    //mrb_define_method(mrb, cpu, "create", mrb_cgroup_create, ARGS_NONE());
+    //mrb_define_method(mrb, cpu, "modify", mrb_cgroup_modify, ARGS_NONE());
+    //mrb_define_method(mrb, cpu, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
     //mrb_define_method(mrb, cpu, "load", mrb_cgroup_load, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "open", mrb_cgroup_create, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "delete", mrb_cgroup_delete, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "close", mrb_cgroup_delete, ARGS_NONE());
+    //mrb_define_method(mrb, cpu, "open", mrb_cgroup_create, ARGS_NONE());
+    //mrb_define_method(mrb, cpu, "delete", mrb_cgroup_delete, ARGS_NONE());
+    //mrb_define_method(mrb, cpu, "close", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_method(mrb, cpu, "cfs_quota_us=", mrb_cgroup_cpu_cfs_quota_us, ARGS_ANY());
     mrb_define_method(mrb, cpu, "cfs_quota_us", mrb_cgroup_get_cpu_cfs_quota_us, ARGS_NONE());
     mrb_define_method(mrb, cpu, "shares=", mrb_cgroup_cpu_shares, ARGS_ANY());
     mrb_define_method(mrb, cpu, "shares", mrb_cgroup_get_cpu_shares, ARGS_NONE());
-    mrb_define_method(mrb, cpu, "attach", mrb_cgroup_attach, ARGS_ANY());
-    mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
+    //mrb_define_method(mrb, cpu, "attach", mrb_cgroup_attach, ARGS_ANY());
+    //mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
     DONE;
 
     struct RClass *blkio;
     blkio = mrb_define_class_under(mrb, cgroup, "BLKIO", mrb->object_class);
+    mrb_include_module(mrb, blkio, mrb_class_get(mrb, "Cgroup"));
     mrb_define_method(mrb, blkio, "initialize", mrb_cgroup_blkio_init, ARGS_ANY());
-    mrb_define_method(mrb, blkio, "create", mrb_cgroup_create, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "modify", mrb_cgroup_modify, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
+    //mrb_define_method(mrb, blkio, "create", mrb_cgroup_create, ARGS_NONE());
+    //mrb_define_method(mrb, blkio, "modify", mrb_cgroup_modify, ARGS_NONE());
+    //mrb_define_method(mrb, blkio, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
     //mrb_define_method(mrb, blkio, "load", mrb_cgroup_load, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "open", mrb_cgroup_create, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "delete", mrb_cgroup_delete, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "close", mrb_cgroup_delete, ARGS_NONE());
+    //mrb_define_method(mrb, blkio, "open", mrb_cgroup_create, ARGS_NONE());
+    //mrb_define_method(mrb, blkio, "delete", mrb_cgroup_delete, ARGS_NONE());
+    //mrb_define_method(mrb, blkio, "close", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_method(mrb, blkio, "throttle_read_bps_device=", mrb_cgroup_blkio_throttle_read_bps_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_read_bps_device", mrb_cgroup_get_blkio_throttle_read_bps_device, ARGS_NONE());
     mrb_define_method(mrb, blkio, "throttle_write_bps_device=", mrb_cgroup_blkio_throttle_write_bps_device, ARGS_ANY());
@@ -789,6 +801,6 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, blkio, "throttle_read_iops_device", mrb_cgroup_get_blkio_throttle_read_iops_device, ARGS_NONE());
     mrb_define_method(mrb, blkio, "throttle_write_iops_device=", mrb_cgroup_blkio_throttle_write_iops_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_write_iops_device", mrb_cgroup_get_blkio_throttle_write_iops_device, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "attach", mrb_cgroup_attach, ARGS_ANY());
+    //mrb_define_method(mrb, blkio, "attach", mrb_cgroup_attach, ARGS_ANY());
     DONE;
 }

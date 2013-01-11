@@ -188,7 +188,7 @@ mrb_value mrb_cgroup_load(mrb_state *mrb, mrb_value self)
 {   
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-    int ret = cgroup_get_cgroup(mrb_cg_cxt->cg, 1);
+    int ret = cgroup_get_cgroup(mrb_cg_cxt->cg);
     if (ret)
         mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_load faild.");
     mrb_iv_set(mrb

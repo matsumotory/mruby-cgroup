@@ -15,25 +15,37 @@ end
 ## example
 
 ```ruby
-cpu = Cgroup::CPU.new("test_group")
-io = Cgroup::BLKIO.new("test_group")
+b = Cgroup::BLKIO.new("hoge")
+c = Cgroup::CPU.new("fuga")
 
-cpu.cfs_quota_us  = 30000
-cpu.shares  = 2048
-io.throttle_read_bps_device "8:0", "200000000"
-io.throttle_write_bps_device "8:0", "100000000"
-io.throttle_read_iops_device "8:0", "20000"
-io.throttle_write_iops_device "8:0", "20000"
-cpu.create;
-io.create;
+p b.exist?
+if b.exist?
+  p b.throttle_write_bps_device
+else
+  p "not found groups"
+end
+b.throttle_write_bps_device = "8:0", "130000000"
+p b.throttle_write_bps_device
+b.create
 
-#cpu.attach
-#c.loop("100000000000000000000000")
-#
-#cpu.attch(pid)
+p c.exist?
+if c.exist?
+  p c.shares
+else
+  p "not found groups"
+end
+c.shares = 2048
+p c.shares
+c.create
 
-cpu.delete
-io.delete
+# attach pid
+c.attach 2225
+
+# attach myself
+b.attach
+
+b.delete
+c.delete
 ```
 
 # License

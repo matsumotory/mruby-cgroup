@@ -805,3 +805,8 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     //mrb_define_method(mrb, blkio, "attach", mrb_cgroup_attach, ARGS_ANY());
     DONE;
 }
+
+void mrb_mruby_cgroup_gem_final(mrb_state *mrb)
+{
+}
+

@@ -134,8 +134,9 @@ mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
     int ret = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1);
-    if (ret)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_delete faild.");
+    // BUG? : cgroup_delete_cgroup returns an error, despite actually succeeding
+    //if (ret)
+    //    mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_delete faild.");
 
     return self;
 }

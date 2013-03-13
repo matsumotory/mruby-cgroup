@@ -414,7 +414,7 @@ mrb_value mrb_cgroup_get_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_valu
 
     if (strcmp(throttle_read_bps_device, "")) {
         ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new2(mrb, throttle_read_bps_device), "split", 0);
+        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_read_bps_device), "split", 0);
     } else {
         ary = mrb_nil_value();
     }
@@ -486,7 +486,7 @@ mrb_value mrb_cgroup_get_blkio_throttle_write_bps_device(mrb_state *mrb, mrb_val
 
     if (strcmp(throttle_write_bps_device, "")) {
         ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new2(mrb, throttle_write_bps_device), "split", 0);
+        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_write_bps_device), "split", 0);
     } else {
         ary = mrb_nil_value();
     }
@@ -558,7 +558,7 @@ mrb_value mrb_cgroup_get_blkio_throttle_read_iops_device(mrb_state *mrb, mrb_val
 
     if (strcmp(throttle_read_iops_device, "")) {
         ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new2(mrb, throttle_read_iops_device), "split", 0);
+        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_read_iops_device), "split", 0);
     } else {
         ary = mrb_nil_value();
     }
@@ -661,7 +661,7 @@ mrb_value mrb_cgroup_get_blkio_throttle_write_iops_device(mrb_state *mrb, mrb_va
 
     if (strcmp(throttle_write_iops_device, "")) {
         ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new2(mrb, throttle_write_iops_device), "split", 0);
+        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_write_iops_device), "split", 0);
     } else {
         ary = mrb_nil_value();
     }

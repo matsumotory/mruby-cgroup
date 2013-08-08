@@ -80,7 +80,7 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
 // group
 //
 
-mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
 {   
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
@@ -102,7 +102,7 @@ mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
 {   
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
@@ -124,7 +124,7 @@ mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
 {
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
@@ -137,7 +137,7 @@ mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-mrb_value mrb_cgroup_exist_p(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_cgroup_exist_p(mrb_state *mrb, mrb_value self)
 {
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
     return (mrb_cg_cxt->new) ? mrb_false_value(): mrb_true_value();
@@ -147,7 +147,7 @@ mrb_value mrb_cgroup_exist_p(mrb_state *mrb, mrb_value self)
 //task
 //
 
-mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
 {   
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
     mrb_value pid = mrb_nil_value();
@@ -176,7 +176,7 @@ mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
 //
 //
 #define SET_MRB_CGROUP_INIT_GROUP(gname) \
-mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)                                     \
+static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)                                     \
 {                                                                                                       \
     mrb_cgroup_context *mrb_cg_cxt = (mrb_cgroup_context *)mrb_malloc(mrb, sizeof(mrb_cgroup_context)); \
     mrb_value group_name;                                                                               \
@@ -226,7 +226,7 @@ SET_MRB_CGROUP_INIT_GROUP(blkio);
 // cgroup_set_value_int64
 //
 #define SET_VALUE_INT64_MRB_CGROUP(gname, key) \
-mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
+static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
 {                                                                                             \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
     mrb_int val;                                                                              \
@@ -253,7 +253,7 @@ SET_VALUE_INT64_MRB_CGROUP(cpu, cfs_quota_us);
 SET_VALUE_INT64_MRB_CGROUP(cpu, shares);
 
 #define GET_VALUE_INT64_MRB_CGROUP(gname, key) \
-mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
+static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
 {                                                                                             \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
     int64_t val;                                                                              \
@@ -267,7 +267,7 @@ mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)        
 GET_VALUE_INT64_MRB_CGROUP(cpu, cfs_quota_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, shares);
 
-mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
 {
     long i = 0;
     long n;
@@ -288,7 +288,7 @@ mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
 // cgroup_get_value_string (a number of keys are 2)
 //
 #define GET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
-mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)             \
+static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)             \
 {                                                                                             \
     int code;                                                                                 \
     char *val;                                                                                \
@@ -314,7 +314,7 @@ GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
 GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 
 #define SET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
-mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                        \
+static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                        \
 {                                                                                                         \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");             \
     int code;                                                                                             \

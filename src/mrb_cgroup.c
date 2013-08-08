@@ -82,11 +82,12 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
 
 mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
 {   
+    int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-    int ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
-    if (ret) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_modify faild.");
+    // BUG? : cgroup_modify_cgroup returns an error(Invalid argument), when run modify method from other instance.
+    if ((code = cgroup_modify_cgroup(mrb_cg_cxt->cg))) {
+        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_modify faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
     mrb_iv_set(mrb
         , self
@@ -106,18 +107,10 @@ mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-/*
-    mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, "cpu");
-    if (mrb_cg_cxt->cgc == NULL)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller failed");
-*/
-    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1)) != 0) {
+    // BUG? : cgroup_create_cgroup returns an error(This kernel does not support this feature), despite actually succeeding
+    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1))) {
         mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
-    //    ret = cgroup_modify_cgroup(mrb_cg_cxt->cg);
-    //    if (ret)
-    //        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_create and cgroup_modify faild.");
-    //}
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")
@@ -136,8 +129,8 @@ mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-    // BUG? : cgroup_delete_cgroup returns an error, despite actually succeeding
-    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1)) != 0) {
+    // BUG? : cgroup_delete_cgroup returns an error(No such file or directory), despite actually succeeding
+    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1))) {
         mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_delete faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
 
@@ -230,18 +223,18 @@ SET_MRB_CGROUP_INIT_GROUP(cpu);
 SET_MRB_CGROUP_INIT_GROUP(blkio);
 
 //
-// cpu
+// cgroup_set_value_int64
 //
-
 #define SET_VALUE_INT64_MRB_CGROUP(gname, key) \
 mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
 {                                                                                             \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
     mrb_int val;                                                                              \
+    int code;                                                                                 \
     mrb_get_args(mrb, "i", &val);                                                             \
                                                                                               \
-    if (cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, val)) {                      \
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_set_value_int64 " #gname "." #key " failed"); \
+    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, val))) {                      \
+        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_set_value_int64 " #gname "." #key " failed: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code))); \
     }                                                                                         \
     mrb_iv_set(mrb                                                                            \
         , self                                                                                \
@@ -264,47 +257,15 @@ mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)        
 {                                                                                             \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
     int64_t val;                                                                              \
-                                                                                              \
-    if (cgroup_get_value_int64(mrb_cg_cxt->cgc, #gname "." #key, &val)) {                     \
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_get_value_int64 " #gname "." #key " failed"); \
+    int code;                                                                                 \
+    if ((code = cgroup_get_value_int64(mrb_cg_cxt->cgc, #gname "." #key, &val))) {            \
+        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_get_value_int64 " #gname "." #key " failed: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code))); \
     }                                                                                         \
-    mrb_iv_set(mrb                                                                            \
-        , self                                                                                \
-        , mrb_intern(mrb, "mrb_cgroup_context")                                               \
-        , mrb_obj_value(Data_Wrap_Struct(mrb                                                  \
-            , mrb->object_class                                                               \
-            , &mrb_cgroup_context_type                                                        \
-            , (void *)mrb_cg_cxt)                                                             \
-        )                                                                                     \
-    );                                                                                        \
-                                                                                              \
     return mrb_fixnum_value(val);                                                             \
 }
 
 GET_VALUE_INT64_MRB_CGROUP(cpu, cfs_quota_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, shares);
-
-/*
-mrb_value mrb_cgroup_load(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-
-    int ret = cgroup_get_cgroup(mrb_cg_cxt->cg);
-    if (ret)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_load faild.");
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-
-    return self;
-}
-*/
 
 mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
 {
@@ -324,330 +285,78 @@ mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
 }
 
 //
-// blkio
+// cgroup_get_value_string (a number of keys are 2)
 //
-
-mrb_value mrb_cgroup_get_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value ary;
-    char *throttle_read_bps_device;
-
-    throttle_read_bps_device = (char *)mrb_malloc(mrb, BLKIO_STRING_SIZE);
-    if (cgroup_get_value_string(mrb_cg_cxt->cgc , "blkio.throttle.read_bps_device" , &throttle_read_bps_device)) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_get_value_string blkio.throttle.read_bps_device failed");
-    }
-
-    if (strcmp(throttle_read_bps_device, "")) {
-        ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_read_bps_device), "split", 0);
-    } else {
-        ary = mrb_nil_value();
-    }
-
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return ary;
+#define GET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
+mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)             \
+{                                                                                             \
+    int code;                                                                                 \
+    char *val;                                                                                \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
+                                                                                              \
+    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, &val)) != 0) {    \
+        mrb_raisef(mrb                                                                        \
+            , E_RUNTIME_ERROR                                                                 \
+            , "cgroup_get_value_string " #gname "." #key1 "." #key2 " failed: %S"             \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                    \
+        );                                                                                    \
+    }                                                                                         \
+    if (strcmp(val, "")) {                                                                    \
+        return mrb_str_new_cstr(mrb, val);                                                    \
+    } else {                                                                                  \
+        return  mrb_nil_value();                                                              \
+    }                                                                                         \
 }
 
-mrb_value mrb_cgroup_blkio_throttle_read_bps_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value argv, dev_ma_mi, read_bps;
-    char *throttle_read_bps_device;
+GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_bps_device);
+GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_bps_device);
+GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
+GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 
-    mrb_get_args(mrb, "o", &argv);
-    dev_ma_mi = mrb_funcall(mrb, argv, "first", 0);
-    read_bps = mrb_funcall(mrb, argv, "last", 0);
-
-    throttle_read_bps_device = (char *)mrb_malloc(mrb, BLKIO_STRING_SIZE);
-    sprintf(throttle_read_bps_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(read_bps));
-    if (cgroup_add_value_string(mrb_cg_cxt->cgc , "blkio.throttle.read_bps_device" , throttle_read_bps_device)) {
-        if (cgroup_set_value_string(mrb_cg_cxt->cgc , "blkio.throttle.read_bps_device" , throttle_read_bps_device)) {
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_set_value_string blkio.throttle.read_bps_device failed");
-        }
-    }
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return self;
+#define SET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
+mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                        \
+{                                                                                                         \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");             \
+    int code;                                                                                             \
+    char *val;                                                                                            \
+    mrb_get_args(mrb, "z", &val);                                                                         \
+    if ((code = cgroup_add_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, val)) != 0) {       \
+        if ((code = cgroup_set_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2 , val)) != 0) {  \
+            mrb_raisef(mrb                                                                                \
+                , E_RUNTIME_ERROR                                                                         \
+                , "cgroup_set_value_string " #gname "." #key1 "." #key2 " failed: %S"                     \
+                , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                            \
+            );                                                                                            \
+        }                                                                                                 \
+    } else {                                                                                              \
+        mrb_raisef(mrb                                                                                    \
+            , E_RUNTIME_ERROR                                                                             \
+            , "cgroup_add_value_string " #gname "." #key1 "." #key2 " failed: %S"                         \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                                \
+        );                                                                                                \
+    }                                                                                                     \
+    mrb_iv_set(mrb                                                                                        \
+        , self                                                                                            \
+        , mrb_intern(mrb, "mrb_cgroup_context")                                                           \
+        , mrb_obj_value(Data_Wrap_Struct(mrb                                                              \
+            , mrb->object_class                                                                           \
+            , &mrb_cgroup_context_type                                                                    \
+            , (void *)mrb_cg_cxt)                                                                         \
+        )                                                                                                 \
+    );                                                                                                    \
+    return self;                                                                                          \
 }
 
-mrb_value mrb_cgroup_get_blkio_throttle_write_bps_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value ary;
-    char *throttle_write_bps_device;
-
-    throttle_write_bps_device = (char *)mrb_malloc(mrb, BLKIO_STRING_SIZE);
-    if (cgroup_get_value_string(mrb_cg_cxt->cgc , "blkio.throttle.write_bps_device" , &throttle_write_bps_device)) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_get_value_string blkio.throttle.write_bps_device failed");
-    }
-
-    if (strcmp(throttle_write_bps_device, "")) {
-        ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_write_bps_device), "split", 0);
-    } else {
-        ary = mrb_nil_value();
-    }
-
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return ary;
-}
-
-mrb_value mrb_cgroup_blkio_throttle_write_bps_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value argv, dev_ma_mi, write_bps;
-    char *throttle_write_bps_device;
-
-    mrb_get_args(mrb, "o", &argv);
-    dev_ma_mi = mrb_funcall(mrb, argv, "first", 0);
-    write_bps = mrb_funcall(mrb, argv, "last", 0);
-
-    throttle_write_bps_device = (char *)malloc(BLKIO_STRING_SIZE);
-    sprintf(throttle_write_bps_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(write_bps));
-
-    if (cgroup_add_value_string(mrb_cg_cxt->cgc , "blkio.throttle.write_bps_device" , throttle_write_bps_device)) {
-        if (cgroup_set_value_string(mrb_cg_cxt->cgc , "blkio.throttle.write_bps_device" , throttle_write_bps_device)) {
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_set_value_string blkio.throttle.write_bps_device failed");
-        }
-    }
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return self;
-}
-
-mrb_value mrb_cgroup_get_blkio_throttle_read_iops_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value ary;
-    char *throttle_read_iops_device;
-
-    throttle_read_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
-    if (cgroup_get_value_string(mrb_cg_cxt->cgc , "blkio.throttle.read_iops_device" , &throttle_read_iops_device)) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_get_value_string blkio.throttle.read_iops_device failed");
-    }
-
-    if (strcmp(throttle_read_iops_device, "")) {
-        ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_read_iops_device), "split", 0);
-    } else {
-        ary = mrb_nil_value();
-    }
-
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return ary;
-}
-
-mrb_value mrb_cgroup_blkio_throttle_read_iops_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value argv, dev_ma_mi, read_iops;
-    char *throttle_read_iops_device;
-
-    mrb_get_args(mrb, "o", &argv);
-    dev_ma_mi = mrb_funcall(mrb, argv, "first", 0);
-    read_iops = mrb_funcall(mrb, argv, "last", 0);
-
-    throttle_read_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
-    sprintf(throttle_read_iops_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(read_iops));
-    if (cgroup_add_value_string(mrb_cg_cxt->cgc , "blkio.throttle.read_iops_device" , throttle_read_iops_device)) {
-        if (cgroup_set_value_string(mrb_cg_cxt->cgc , "blkio.throttle.read_iops_device" , throttle_read_iops_device)) {
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_set_value_string blkio.throttle.read_iops_device failed");
-        }
-    }
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return self;
-}
-
-/*
-mrb_value mrb_cgroup_blkio_throttle_read_iops_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value dev_ma_mi, read_iops;
-    char *throttle_read_iops_device;
-    mrb_get_args(mrb, "oo", &dev_ma_mi, &read_iops);
-
-    throttle_read_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
-    sprintf(throttle_read_iops_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(read_iops));
-    int ret = cgroup_add_value_string(mrb_cg_cxt->cgc
-        , "blkio.throttle.read_iops_device"
-        , throttle_read_iops_device
-    );
-    if (ret)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_string blkio.throttle.read_iops_device failed");
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_read_iops_device);
-
-    return self;
-}
-*/
-
-mrb_value mrb_cgroup_get_blkio_throttle_write_iops_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value ary;
-    char *throttle_write_iops_device;
-
-    throttle_write_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
-    if (cgroup_get_value_string(mrb_cg_cxt->cgc , "blkio.throttle.write_iops_device" , &throttle_write_iops_device)) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_get_value_string blkio.throttle.write_iops_device failed");
-    }
-
-    if (strcmp(throttle_write_iops_device, "")) {
-        ary = mrb_ary_new(mrb);
-        ary = mrb_funcall(mrb, mrb_str_new_cstr(mrb, throttle_write_iops_device), "split", 0);
-    } else {
-        ary = mrb_nil_value();
-    }
-
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return ary;
-}
-
-mrb_value mrb_cgroup_blkio_throttle_write_iops_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value argv, dev_ma_mi, write_iops;
-    char *throttle_write_iops_device;
-
-    mrb_get_args(mrb, "o", &argv);
-    dev_ma_mi = mrb_funcall(mrb, argv, "first", 0);
-    write_iops = mrb_funcall(mrb, argv, "last", 0);
-
-    throttle_write_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
-    sprintf(throttle_write_iops_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(write_iops));
-    if (cgroup_add_value_string(mrb_cg_cxt->cgc , "blkio.throttle.write_iops_device" , throttle_write_iops_device)) {
-        if (cgroup_set_value_string(mrb_cg_cxt->cgc , "blkio.throttle.write_iops_device" , throttle_write_iops_device)) {
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_set_value_string blkio.throttle.write_iops_device failed");
-        }
-    }
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_bps_device);
-
-    return self;
-}
-
-/*
-mrb_value mrb_cgroup_blkio_throttle_write_iops_device(mrb_state *mrb, mrb_value self)
-{   
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_value dev_ma_mi, write_iops;
-    char *throttle_write_iops_device;
-    mrb_get_args(mrb, "oo", &dev_ma_mi, &write_iops);
-
-    throttle_write_iops_device = (char *)malloc(BLKIO_STRING_SIZE);
-    sprintf(throttle_write_iops_device, "%s %s", RSTRING_PTR(dev_ma_mi), RSTRING_PTR(write_iops));
-    int ret = cgroup_add_value_string(mrb_cg_cxt->cgc
-        , "blkio.throttle.write_iops_device"
-        , throttle_write_iops_device
-    );
-    if (ret)
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_value_string blkio.throttle.write_iops_device failed");
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-    //free(throttle_write_iops_device);
-
-    return self;
-}
-*/
+SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_bps_device);
+SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_bps_device);
+SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
+SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 
 void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
 {
     struct RClass *cgroup;
 
     cgroup = mrb_define_module(mrb, "Cgroup");
-    // experimental module function
     mrb_define_module_function(mrb, cgroup, "create", mrb_cgroup_create, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "open", mrb_cgroup_create, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "delete", mrb_cgroup_delete, ARGS_NONE());
@@ -663,18 +372,10 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);
     mrb_include_module(mrb, cpu, mrb_class_get(mrb, "Cgroup"));
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
-    //mrb_define_method(mrb, cpu, "create", mrb_cgroup_create, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "modify", mrb_cgroup_modify, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "load", mrb_cgroup_load, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "open", mrb_cgroup_create, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "delete", mrb_cgroup_delete, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "close", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_method(mrb, cpu, "cfs_quota_us=", mrb_cgroup_set_cpu_cfs_quota_us, ARGS_ANY());
     mrb_define_method(mrb, cpu, "cfs_quota_us", mrb_cgroup_get_cpu_cfs_quota_us, ARGS_NONE());
     mrb_define_method(mrb, cpu, "shares=", mrb_cgroup_set_cpu_shares, ARGS_ANY());
     mrb_define_method(mrb, cpu, "shares", mrb_cgroup_get_cpu_shares, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "attach", mrb_cgroup_attach, ARGS_ANY());
     //mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
     DONE;
 
@@ -682,22 +383,14 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     blkio = mrb_define_class_under(mrb, cgroup, "BLKIO", mrb->object_class);
     mrb_include_module(mrb, blkio, mrb_class_get(mrb, "Cgroup"));
     mrb_define_method(mrb, blkio, "initialize", mrb_cgroup_blkio_init, ARGS_ANY());
-    //mrb_define_method(mrb, blkio, "create", mrb_cgroup_create, ARGS_NONE());
-    //mrb_define_method(mrb, blkio, "modify", mrb_cgroup_modify, ARGS_NONE());
-    //mrb_define_method(mrb, blkio, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
-    //mrb_define_method(mrb, blkio, "load", mrb_cgroup_load, ARGS_NONE());
-    //mrb_define_method(mrb, blkio, "open", mrb_cgroup_create, ARGS_NONE());
-    //mrb_define_method(mrb, blkio, "delete", mrb_cgroup_delete, ARGS_NONE());
-    //mrb_define_method(mrb, blkio, "close", mrb_cgroup_delete, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "throttle_read_bps_device=", mrb_cgroup_blkio_throttle_read_bps_device, ARGS_ANY());
+    mrb_define_method(mrb, blkio, "throttle_read_bps_device=", mrb_cgroup_set_blkio_throttle_read_bps_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_read_bps_device", mrb_cgroup_get_blkio_throttle_read_bps_device, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "throttle_write_bps_device=", mrb_cgroup_blkio_throttle_write_bps_device, ARGS_ANY());
+    mrb_define_method(mrb, blkio, "throttle_write_bps_device=", mrb_cgroup_set_blkio_throttle_write_bps_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_write_bps_device", mrb_cgroup_get_blkio_throttle_write_bps_device, ARGS_ANY());
-    mrb_define_method(mrb, blkio, "throttle_read_iops_device=", mrb_cgroup_blkio_throttle_read_iops_device, ARGS_ANY());
+    mrb_define_method(mrb, blkio, "throttle_read_iops_device=", mrb_cgroup_set_blkio_throttle_read_iops_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_read_iops_device", mrb_cgroup_get_blkio_throttle_read_iops_device, ARGS_NONE());
-    mrb_define_method(mrb, blkio, "throttle_write_iops_device=", mrb_cgroup_blkio_throttle_write_iops_device, ARGS_ANY());
+    mrb_define_method(mrb, blkio, "throttle_write_iops_device=", mrb_cgroup_set_blkio_throttle_write_iops_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_write_iops_device", mrb_cgroup_get_blkio_throttle_write_iops_device, ARGS_NONE());
-    //mrb_define_method(mrb, blkio, "attach", mrb_cgroup_attach, ARGS_ANY());
     DONE;
 }
 

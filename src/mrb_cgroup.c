@@ -44,7 +44,7 @@
 typedef struct cgroup cgroup_t;
 typedef struct cgroup_controller cgroup_controller_t;
 typedef struct {
-    int new;
+    int already_exist;
     cgroup_t *cg;
     cgroup_controller_t *cgc;
 } mrb_cgroup_context;
@@ -141,7 +141,7 @@ static mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
 static mrb_value mrb_cgroup_exist_p(mrb_state *mrb, mrb_value self)
 {
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    return (mrb_cg_cxt->new) ? mrb_false_value(): mrb_true_value();
+    return (mrb_cg_cxt->already_exist) ? mrb_true_value(): mrb_false_value();
 }
 
 //
@@ -210,13 +210,13 @@ static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)      
     }                                                                                                   \
                                                                                                         \
     if (cgroup_get_cgroup(mrb_cg_cxt->cg)) {                                                            \
-        mrb_cg_cxt->new = 1;                                                                            \
+        mrb_cg_cxt->already_exist = 0;                                                                  \
         mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, #gname);                                \
         if (mrb_cg_cxt->cgc == NULL) {                                                                  \
             mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller " #gname " failed");                  \
         }                                                                                               \
     } else {                                                                                            \
-        mrb_cg_cxt->new = 0;                                                                            \
+        mrb_cg_cxt->already_exist = 1;                                                                  \
         mrb_cg_cxt->cgc = cgroup_get_controller(mrb_cg_cxt->cg, #gname);                                \
         if (mrb_cg_cxt->cgc == NULL) {                                                                  \
             mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, #gname);                            \

@@ -109,7 +109,7 @@ static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
     // BUG? : cgroup_create_cgroup returns an error(This kernel does not support this feature), despite actually succeeding
-    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1))) {
+    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 0))) {
     //    mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
     mrb_iv_set(mrb
@@ -131,7 +131,7 @@ static mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
     // BUG? : cgroup_delete_cgroup returns an error(No such file or directory), despite actually succeeding
-    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1))) {
+    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 0))) {
         mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_delete faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
 
@@ -195,47 +195,47 @@ static mrb_value mrb_cgroup_get_current_path(mrb_state *mrb, mrb_value self)
 //
 //
 #define SET_MRB_CGROUP_INIT_GROUP(gname) \
-static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)                                     \
-{                                                                                                       \
-    mrb_cgroup_context *mrb_cg_cxt = (mrb_cgroup_context *)mrb_malloc(mrb, sizeof(mrb_cgroup_context)); \
-    mrb_value group_name;                                                                               \
-                                                                                                        \
-    if (cgroup_init()) {                                                                                \
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_init " #gname " failed");                                \
-    }                                                                                                   \
-    mrb_get_args(mrb, "o", &group_name);                                                                \
-    mrb_cg_cxt->cg = cgroup_new_cgroup(RSTRING_PTR(group_name));                                        \
-    if (mrb_cg_cxt->cg == NULL) {                                                                       \
-        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");                                     \
-    }                                                                                                   \
-                                                                                                        \
-    if (cgroup_get_cgroup(mrb_cg_cxt->cg)) {                                                            \
-        mrb_cg_cxt->already_exist = 0;                                                                  \
-        mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, #gname);                                \
-        if (mrb_cg_cxt->cgc == NULL) {                                                                  \
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller " #gname " failed");                  \
-        }                                                                                               \
-    } else {                                                                                            \
-        mrb_cg_cxt->already_exist = 1;                                                                  \
-        mrb_cg_cxt->cgc = cgroup_get_controller(mrb_cg_cxt->cg, #gname);                                \
-        if (mrb_cg_cxt->cgc == NULL) {                                                                  \
-            mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, #gname);                            \
-            if (mrb_cg_cxt->cgc == NULL) {                                                              \
-                mrb_raise(mrb, E_RUNTIME_ERROR, "get_cgroup success, but add_controller "  #gname " failed"); \
-            }                                                                                           \
-        }                                                                                               \
-    }                                                                                                   \
-    mrb_iv_set(mrb                                                                                      \
-        , self                                                                                          \
-        , mrb_intern(mrb, "mrb_cgroup_context")                                                         \
-        , mrb_obj_value(Data_Wrap_Struct(mrb                                                            \
-            , mrb->object_class                                                                         \
-            , &mrb_cgroup_context_type                                                                  \
-            , (void *)mrb_cg_cxt)                                                                       \
-        )                                                                                               \
-    );                                                                                                  \
-                                                                                                        \
-    return self;                                                                                        \
+static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)                                      \
+{                                                                                                               \
+    mrb_cgroup_context *mrb_cg_cxt = (mrb_cgroup_context *)mrb_malloc(mrb, sizeof(mrb_cgroup_context));         \
+    mrb_value group_name;                                                                                       \
+                                                                                                                \
+    if (cgroup_init()) {                                                                                        \
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_init " #gname " failed");                                        \
+    }                                                                                                           \
+    mrb_get_args(mrb, "o", &group_name);                                                                        \
+    mrb_cg_cxt->cg = cgroup_new_cgroup(RSTRING_PTR(group_name));                                                \
+    if (mrb_cg_cxt->cg == NULL) {                                                                               \
+        mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");                                             \
+    }                                                                                                           \
+                                                                                                                \
+    if (cgroup_get_cgroup(mrb_cg_cxt->cg)) {                                                                    \
+        mrb_cg_cxt->already_exist = 0;                                                                          \
+        mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, #gname);                                        \
+        if (mrb_cg_cxt->cgc == NULL) {                                                                          \
+            mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller " #gname " failed");                          \
+        }                                                                                                       \
+    } else {                                                                                                    \
+        mrb_cg_cxt->already_exist = 1;                                                                          \
+        mrb_cg_cxt->cgc = cgroup_get_controller(mrb_cg_cxt->cg, #gname);                                        \
+        if (mrb_cg_cxt->cgc == NULL) {                                                                          \
+            mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, #gname);                                    \
+            if (mrb_cg_cxt->cgc == NULL) {                                                                      \
+                mrb_raise(mrb, E_RUNTIME_ERROR, "get_cgroup success, but add_controller "  #gname " failed");   \
+            }                                                                                                   \
+        }                                                                                                       \
+    }                                                                                                           \
+    mrb_iv_set(mrb                                                                                              \
+        , self                                                                                                  \
+        , mrb_intern(mrb, "mrb_cgroup_context")                                                                 \
+        , mrb_obj_value(Data_Wrap_Struct(mrb                                                                    \
+            , mrb->object_class                                                                                 \
+            , &mrb_cgroup_context_type                                                                          \
+            , (void *)mrb_cg_cxt)                                                                               \
+        )                                                                                                       \
+    );                                                                                                          \
+                                                                                                                \
+    return self;                                                                                                \
 }
 
 SET_MRB_CGROUP_INIT_GROUP(cpu);

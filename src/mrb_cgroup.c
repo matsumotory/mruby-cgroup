@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "mruby.h"
 #include "mruby/data.h"
@@ -109,7 +110,7 @@ static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
 
     // BUG? : cgroup_create_cgroup returns an error(This kernel does not support this feature), despite actually succeeding
     if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1))) {
-        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
+    //    mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
     mrb_iv_set(mrb
         , self
@@ -170,6 +171,24 @@ static mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
 
     return self;
 }
+
+/*
+static mrb_value mrb_cgroup_get_current_path(mrb_state *mrb, mrb_value self)
+{
+    mrb_cgroup_context *mrb_cg_ctx = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    mrb_int pid = 0;
+    char *path;
+
+    mrb_get_args(mrb, "|i", &pid);
+    if (pid > 0) {
+        cgroup_get_current_controller_path(getpid(), mrb_cg_ctx->cgc, &path);
+    } else {
+        cgroup_get_current_controller_path((pid_t)pid, mrb_cg_ctx->cgc, &path);
+    }
+
+    return mrb_str_new_cstr(mrb, path);
+}
+*/
 
 //
 // init
@@ -361,7 +380,8 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_module_function(mrb, cgroup, "open", mrb_cgroup_create, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "delete", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "close", mrb_cgroup_delete, ARGS_NONE());
-    mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());
+    mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_OPT(1));
+    //mrb_define_module_function(mrb, cgroup, "path", mrb_cgroup_get_current_path, ARGS_OPT(1));
     mrb_define_module_function(mrb, cgroup, "modify", mrb_cgroup_modify, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());

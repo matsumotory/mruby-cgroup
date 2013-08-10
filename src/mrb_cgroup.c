@@ -269,6 +269,9 @@ static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self) 
 }
 
 SET_VALUE_INT64_MRB_CGROUP(cpu, cfs_quota_us);
+SET_VALUE_INT64_MRB_CGROUP(cpu, cfs_period_us);
+SET_VALUE_INT64_MRB_CGROUP(cpu, rt_period_us);
+SET_VALUE_INT64_MRB_CGROUP(cpu, rt_runtime_us);
 SET_VALUE_INT64_MRB_CGROUP(cpu, shares);
 
 #define GET_VALUE_INT64_MRB_CGROUP(gname, key) \
@@ -284,6 +287,9 @@ static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self) 
 }
 
 GET_VALUE_INT64_MRB_CGROUP(cpu, cfs_quota_us);
+GET_VALUE_INT64_MRB_CGROUP(cpu, cfs_period_us);
+GET_VALUE_INT64_MRB_CGROUP(cpu, rt_period_us);
+GET_VALUE_INT64_MRB_CGROUP(cpu, rt_runtime_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, shares);
 
 static mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
@@ -304,19 +310,19 @@ static mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
 }
 
 //
-// cgroup_get_value_string (a number of keys are 2)
+// cgroup_get_value_string
 //
-#define GET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
-static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)             \
+#define GET_VALUE_STRING_MRB_CGROUP(gname, key) \
+static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)               \
 {                                                                                             \
     int code;                                                                                 \
     char *val;                                                                                \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
                                                                                               \
-    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, &val)) != 0) {    \
+    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key, &val)) != 0) {     \
         mrb_raisef(mrb                                                                        \
             , E_RUNTIME_ERROR                                                                 \
-            , "cgroup_get_value_string " #gname "." #key1 "." #key2 " failed: %S"             \
+            , "cgroup_get_value_string " #gname "." #key " failed: %S"                        \
             , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                    \
         );                                                                                    \
     }                                                                                         \
@@ -325,6 +331,32 @@ static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_va
     } else {                                                                                  \
         return  mrb_nil_value();                                                              \
     }                                                                                         \
+}
+
+GET_VALUE_STRING_MRB_CGROUP(cpu, stat);
+
+//
+// cgroup_get_value_string (a number of keys are 2)
+//
+#define GET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
+static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)               \
+{                                                                                                       \
+    int code;                                                                                           \
+    char *val;                                                                                          \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");           \
+                                                                                                        \
+    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, &val)) != 0) {    \
+        mrb_raisef(mrb                                                                                  \
+            , E_RUNTIME_ERROR                                                                           \
+            , "cgroup_get_value_string " #gname "." #key1 "." #key2 " failed: %S"                       \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                              \
+        );                                                                                              \
+    }                                                                                                   \
+    if (strcmp(val, "")) {                                                                              \
+        return mrb_str_new_cstr(mrb, val);                                                              \
+    } else {                                                                                            \
+        return  mrb_nil_value();                                                                        \
+    }                                                                                                   \
 }
 
 GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_bps_device);
@@ -394,8 +426,15 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
     mrb_define_method(mrb, cpu, "cfs_quota_us=", mrb_cgroup_set_cpu_cfs_quota_us, ARGS_ANY());
     mrb_define_method(mrb, cpu, "cfs_quota_us", mrb_cgroup_get_cpu_cfs_quota_us, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "cfs_period_us=", mrb_cgroup_set_cpu_cfs_period_us, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "cfs_period_us",  mrb_cgroup_get_cpu_cfs_period_us, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "rt_period_us=", mrb_cgroup_set_cpu_rt_period_us, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "rt_period_us",  mrb_cgroup_get_cpu_rt_period_us, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "rt_runtime_us=", mrb_cgroup_set_cpu_rt_runtime_us, ARGS_ANY());
+    mrb_define_method(mrb, cpu, "rt_runtime_us",  mrb_cgroup_get_cpu_rt_runtime_us, ARGS_NONE());
     mrb_define_method(mrb, cpu, "shares=", mrb_cgroup_set_cpu_shares, ARGS_ANY());
     mrb_define_method(mrb, cpu, "shares", mrb_cgroup_get_cpu_shares, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "stat", mrb_cgroup_get_cpu_stat, ARGS_NONE());
     //mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
     DONE;
 

@@ -240,6 +240,7 @@ static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)      
 }
 
 SET_MRB_CGROUP_INIT_GROUP(cpu);
+SET_MRB_CGROUP_INIT_GROUP(cpuset);
 SET_MRB_CGROUP_INIT_GROUP(blkio);
 
 //
@@ -293,23 +294,6 @@ GET_VALUE_INT64_MRB_CGROUP(cpu, rt_period_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, rt_runtime_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, shares);
 
-static mrb_value mrb_cgroup_loop(mrb_state *mrb, mrb_value self)
-{
-    long i = 0;
-    long n;
-    mrb_value c;
-    mrb_get_args(mrb, "o", &c);
-    n = atol(RSTRING_PTR(c));
-    printf("%ld\n", n);
-    
-    while (i < n + 1000000000000000) {
-        i++;
-    }
-    printf("%ld\n", i);
-
-    return self;
-}
-
 //
 // cgroup_get_value_string
 //
@@ -335,9 +319,12 @@ static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self) 
 }
 
 GET_VALUE_STRING_MRB_CGROUP(cpu, stat);
+GET_VALUE_STRING_MRB_CGROUP(cpuset, cpus);
+GET_VALUE_STRING_MRB_CGROUP(cpuset, mems);
 
 //
 // cgroup_get_value_string (a number of keys are 2)
+    //mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
 //
 #define GET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
 static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)               \
@@ -365,6 +352,49 @@ GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_bps_device);
 GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
 GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 
+//
+// cgroup_set_value_string
+//
+#define SET_VALUE_STRING_MRB_CGROUP(gname, key) \
+static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self)                           \
+{                                                                                                         \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");             \
+    int code;                                                                                             \
+    char *val;                                                                                            \
+    mrb_get_args(mrb, "z", &val);                                                                         \
+    if ((code = cgroup_add_value_string(mrb_cg_cxt->cgc , #gname "." #key, val)) != 0) {                  \
+        if ((code = cgroup_set_value_string(mrb_cg_cxt->cgc , #gname "." #key , val)) != 0) {             \
+            mrb_raisef(mrb                                                                                \
+                , E_RUNTIME_ERROR                                                                         \
+                , "cgroup_set_value_string " #gname "." #key " failed: %S"                                \
+                , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                            \
+            );                                                                                            \
+        }                                                                                                 \
+    } else {                                                                                              \
+        mrb_raisef(mrb                                                                                    \
+            , E_RUNTIME_ERROR                                                                             \
+            , "cgroup_add_value_string " #gname "." #key " failed: %S"                                    \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                                \
+        );                                                                                                \
+    }                                                                                                     \
+    mrb_iv_set(mrb                                                                                        \
+        , self                                                                                            \
+        , mrb_intern(mrb, "mrb_cgroup_context")                                                           \
+        , mrb_obj_value(Data_Wrap_Struct(mrb                                                              \
+            , mrb->object_class                                                                           \
+            , &mrb_cgroup_context_type                                                                    \
+            , (void *)mrb_cg_cxt)                                                                         \
+        )                                                                                                 \
+    );                                                                                                    \
+    return self;                                                                                          \
+}
+
+SET_VALUE_STRING_MRB_CGROUP(cpuset, cpus);
+SET_VALUE_STRING_MRB_CGROUP(cpuset, mems);
+
+//
+// cgroup_set_value_string (a number of keys are 2)
+//
 #define SET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
 static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                        \
 {                                                                                                         \
@@ -407,6 +437,9 @@ SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
 {
     struct RClass *cgroup;
+    struct RClass *cpu;
+    struct RClass *cpuset;
+    struct RClass *blkio;
 
     cgroup = mrb_define_module(mrb, "Cgroup");
     mrb_define_module_function(mrb, cgroup, "create", mrb_cgroup_create, ARGS_NONE());
@@ -418,10 +451,8 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_module_function(mrb, cgroup, "modify", mrb_cgroup_modify, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());
-    mrb_define_module_function(mrb, cgroup, "loop", mrb_cgroup_loop, ARGS_ANY());
     DONE;
 
-    struct RClass *cpu;
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);
     mrb_include_module(mrb, cpu, mrb_class_get(mrb, "Cgroup"));
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
@@ -436,10 +467,17 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, cpu, "shares=", mrb_cgroup_set_cpu_shares, ARGS_ANY());
     mrb_define_method(mrb, cpu, "shares", mrb_cgroup_get_cpu_shares, ARGS_NONE());
     mrb_define_method(mrb, cpu, "stat", mrb_cgroup_get_cpu_stat, ARGS_NONE());
-    //mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
     DONE;
 
-    struct RClass *blkio;
+    cpuset = mrb_define_class_under(mrb, cgroup, "CPUSET", mrb->object_class);
+    mrb_include_module(mrb, cpuset, mrb_class_get(mrb, "Cgroup"));
+    mrb_define_method(mrb, cpuset, "initialize", mrb_cgroup_cpuset_init, ARGS_ANY());
+    mrb_define_method(mrb, cpuset, "cpus=", mrb_cgroup_set_cpuset_cpus, ARGS_OPT(1));
+    mrb_define_method(mrb, cpuset, "cpus",  mrb_cgroup_get_cpuset_cpus, ARGS_NONE());
+    mrb_define_method(mrb, cpuset, "mems=", mrb_cgroup_set_cpuset_mems, ARGS_OPT(1));
+    mrb_define_method(mrb, cpuset, "mems",  mrb_cgroup_get_cpuset_mems, ARGS_NONE());
+    DONE;
+
     blkio = mrb_define_class_under(mrb, cgroup, "BLKIO", mrb->object_class);
     mrb_include_module(mrb, blkio, mrb_class_get(mrb, "Cgroup"));
     mrb_define_method(mrb, blkio, "initialize", mrb_cgroup_blkio_init, ARGS_ANY());

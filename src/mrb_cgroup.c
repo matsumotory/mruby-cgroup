@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "mruby.h"
 #include "mruby/data.h"
@@ -41,11 +42,18 @@
 #define BLKIO_STRING_SIZE 64
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
+typedef enum {
+    MRB_CGROUP_cpu,
+    MRB_CGROUP_cpuset,
+    MRB_CGROUP_cpuacct,
+    MRB_CGROUP_blkio
+} group_type_t;
 typedef struct cgroup cgroup_t;
 typedef struct cgroup_controller cgroup_controller_t;
 typedef struct {
     int already_exist;
     mrb_value group_name;
+    group_type_t type;
     cgroup_t *cg;
     cgroup_controller_t *cgc;
 } mrb_cgroup_context;
@@ -201,6 +209,7 @@ static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)      
 {                                                                                                               \
     mrb_cgroup_context *mrb_cg_cxt = (mrb_cgroup_context *)mrb_malloc(mrb, sizeof(mrb_cgroup_context));         \
                                                                                                                 \
+    mrb_cg_cxt->type = MRB_CGROUP_##gname;                                                                      \
     if (cgroup_init()) {                                                                                        \
         mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_init " #gname " failed");                                        \
     }                                                                                                           \

@@ -110,8 +110,9 @@ static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
 
     // BUG? : cgroup_create_cgroup returns an error(This kernel does not support this feature), despite actually succeeding
     if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 0))) {
-    //    mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
+        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
+    mrb_cg_cxt->already_exist = 1;
     mrb_iv_set(mrb
         , self
         , mrb_intern(mrb, "mrb_cgroup_context")

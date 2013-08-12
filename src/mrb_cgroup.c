@@ -45,6 +45,7 @@ typedef struct cgroup cgroup_t;
 typedef struct cgroup_controller cgroup_controller_t;
 typedef struct {
     int already_exist;
+    mrb_value group_name;
     cgroup_t *cg;
     cgroup_controller_t *cgc;
 } mrb_cgroup_context;
@@ -199,13 +200,12 @@ static mrb_value mrb_cgroup_get_current_path(mrb_state *mrb, mrb_value self)
 static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)                                      \
 {                                                                                                               \
     mrb_cgroup_context *mrb_cg_cxt = (mrb_cgroup_context *)mrb_malloc(mrb, sizeof(mrb_cgroup_context));         \
-    mrb_value group_name;                                                                                       \
                                                                                                                 \
     if (cgroup_init()) {                                                                                        \
         mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_init " #gname " failed");                                        \
     }                                                                                                           \
-    mrb_get_args(mrb, "o", &group_name);                                                                        \
-    mrb_cg_cxt->cg = cgroup_new_cgroup(RSTRING_PTR(group_name));                                                \
+    mrb_get_args(mrb, "o", &mrb_cg_cxt->group_name);                                                            \
+    mrb_cg_cxt->cg = cgroup_new_cgroup(RSTRING_PTR(mrb_cg_cxt->group_name));                                    \
     if (mrb_cg_cxt->cg == NULL) {                                                                               \
         mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");                                             \
     }                                                                                                           \
@@ -241,6 +241,7 @@ static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)      
 
 SET_MRB_CGROUP_INIT_GROUP(cpu);
 SET_MRB_CGROUP_INIT_GROUP(cpuset);
+SET_MRB_CGROUP_INIT_GROUP(cpuacct);
 SET_MRB_CGROUP_INIT_GROUP(blkio);
 
 //
@@ -275,6 +276,7 @@ SET_VALUE_INT64_MRB_CGROUP(cpu, cfs_period_us);
 SET_VALUE_INT64_MRB_CGROUP(cpu, rt_period_us);
 SET_VALUE_INT64_MRB_CGROUP(cpu, rt_runtime_us);
 SET_VALUE_INT64_MRB_CGROUP(cpu, shares);
+SET_VALUE_INT64_MRB_CGROUP(cpuacct, usage);
 
 #define GET_VALUE_INT64_MRB_CGROUP(gname, key) \
 static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
@@ -293,6 +295,7 @@ GET_VALUE_INT64_MRB_CGROUP(cpu, cfs_period_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, rt_period_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, rt_runtime_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, shares);
+GET_VALUE_INT64_MRB_CGROUP(cpuacct, usage);
 
 //
 // cgroup_get_value_string
@@ -321,6 +324,8 @@ static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self) 
 GET_VALUE_STRING_MRB_CGROUP(cpu, stat);
 GET_VALUE_STRING_MRB_CGROUP(cpuset, cpus);
 GET_VALUE_STRING_MRB_CGROUP(cpuset, mems);
+GET_VALUE_STRING_MRB_CGROUP(cpuacct, stat);
+GET_VALUE_STRING_MRB_CGROUP(cpuacct, usage_percpu);
 
 //
 // cgroup_get_value_string (a number of keys are 2)
@@ -434,10 +439,27 @@ SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_bps_device);
 SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
 SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 
+static mrb_value mrb_cgroup_get_cpuacct_obj(mrb_state *mrb, mrb_value self)
+{
+    mrb_value cpuacct_value;
+    struct RClass *cpuacct_class, *cgroup_class;
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+
+    cpuacct_value = mrb_iv_get(mrb, self, mrb_intern(mrb, "cpuacct_obj"));
+    if (mrb_nil_p(cpuacct_value)) {
+        cgroup_class = mrb_class_get(mrb, "Cgroup");
+        cpuacct_class = (struct RClass*)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(cgroup_class), mrb_intern_cstr(mrb, "CPUACCT")));
+        cpuacct_value = mrb_class_new_instance(mrb, 1, &mrb_cg_cxt->group_name, cpuacct_class);
+        mrb_iv_set(mrb, self, mrb_intern(mrb, "cpuacct_obj"), cpuacct_value);
+    }
+    return cpuacct_value;
+}
+
 void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
 {
     struct RClass *cgroup;
     struct RClass *cpu;
+    struct RClass *cpuacct;
     struct RClass *cpuset;
     struct RClass *blkio;
 
@@ -467,14 +489,24 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, cpu, "shares=", mrb_cgroup_set_cpu_shares, ARGS_ANY());
     mrb_define_method(mrb, cpu, "shares", mrb_cgroup_get_cpu_shares, ARGS_NONE());
     mrb_define_method(mrb, cpu, "stat", mrb_cgroup_get_cpu_stat, ARGS_NONE());
+    mrb_define_method(mrb, cpu, "cpuacct", mrb_cgroup_get_cpuacct_obj, ARGS_NONE());
+    DONE;
+
+    cpuacct = mrb_define_class_under(mrb, cgroup, "CPUACCT", mrb->object_class);
+    mrb_include_module(mrb, cpuacct, mrb_class_get(mrb, "Cgroup"));
+    mrb_define_method(mrb, cpuacct, "initialize", mrb_cgroup_cpuacct_init, ARGS_REQ(1));
+    mrb_define_method(mrb, cpuacct, "stat", mrb_cgroup_get_cpuacct_stat, ARGS_NONE());
+    mrb_define_method(mrb, cpuacct, "usage", mrb_cgroup_get_cpuacct_usage, ARGS_NONE());
+    mrb_define_method(mrb, cpuacct, "usage=", mrb_cgroup_set_cpuacct_usage, ARGS_REQ(1));
+    mrb_define_method(mrb, cpuacct, "usage_percpu",  mrb_cgroup_get_cpuacct_usage_percpu, ARGS_NONE());
     DONE;
 
     cpuset = mrb_define_class_under(mrb, cgroup, "CPUSET", mrb->object_class);
     mrb_include_module(mrb, cpuset, mrb_class_get(mrb, "Cgroup"));
     mrb_define_method(mrb, cpuset, "initialize", mrb_cgroup_cpuset_init, ARGS_ANY());
-    mrb_define_method(mrb, cpuset, "cpus=", mrb_cgroup_set_cpuset_cpus, ARGS_OPT(1));
+    mrb_define_method(mrb, cpuset, "cpus=", mrb_cgroup_set_cpuset_cpus, ARGS_REQ(1));
     mrb_define_method(mrb, cpuset, "cpus",  mrb_cgroup_get_cpuset_cpus, ARGS_NONE());
-    mrb_define_method(mrb, cpuset, "mems=", mrb_cgroup_set_cpuset_mems, ARGS_OPT(1));
+    mrb_define_method(mrb, cpuset, "mems=", mrb_cgroup_set_cpuset_mems, ARGS_REQ(1));
     mrb_define_method(mrb, cpuset, "mems",  mrb_cgroup_get_cpuset_mems, ARGS_NONE());
     DONE;
 

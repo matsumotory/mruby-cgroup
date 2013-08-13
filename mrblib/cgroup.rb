@@ -10,6 +10,11 @@ module Cgroup
       root_attach Cgroup::CPU.new "/"
     end
   end
+  class CPUSET
+    def detach
+      root_attach Cgroup::CPUSET.new "/"
+    end
+  end
   class BLKIO
     def detach
       root_attach Cgroup::BLKIO.new "/"

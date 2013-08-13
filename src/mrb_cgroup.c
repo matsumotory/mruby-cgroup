@@ -90,6 +90,7 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
 // group
 //
 
+/*
 static mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
 {   
     int code;
@@ -111,6 +112,7 @@ static mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
 
     return self;
 }
+*/
 
 static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
 {   
@@ -490,7 +492,7 @@ static mrb_value mrb_cgroup_get_cpuacct_obj(mrb_state *mrb, mrb_value self)
     if (mrb_nil_p(cpuacct_value)) {
         cgroup_class = mrb_class_get(mrb, "Cgroup");
         cpuacct_class = (struct RClass*)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(cgroup_class), mrb_intern_cstr(mrb, "CPUACCT")));
-        cpuacct_value = mrb_class_new_instance(mrb, 1, &mrb_cg_cxt->group_name, cpuacct_class);
+        cpuacct_value = mrb_obj_new(mrb, cpuacct_class, 1, &mrb_cg_cxt->group_name);
         mrb_iv_set(mrb, self, mrb_intern(mrb, "cpuacct_obj"), cpuacct_value);
     }
     return cpuacct_value;

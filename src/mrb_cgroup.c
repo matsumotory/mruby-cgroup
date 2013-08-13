@@ -328,10 +328,19 @@ static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self) 
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
     int64_t val;                                                                              \
     int code;                                                                                 \
-    if ((code = cgroup_get_value_int64(mrb_cg_cxt->cgc, #gname "." #key, &val))) {            \
-        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_get_value_int64 " #gname "." #key " failed: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code))); \
+    if ((code = cgroup_get_value_int64(mrb_cg_cxt->cgc, #gname "." #key, &val)) && code != ECGROUPVALUENOTEXIST) {            \
+        mrb_raisef(mrb \
+            , E_RUNTIME_ERROR \
+            , "cgroup_get_value_int64 " #gname "." #key " failed: %S(%S)" \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code)) \
+            , mrb_fixnum_value(code) \
+        ); \
     }                                                                                         \
-    return mrb_fixnum_value(val);                                                             \
+    if (code == ECGROUPVALUENOTEXIST) {\
+        return mrb_nil_value();\
+    } else {\
+        return mrb_fixnum_value(val);                                                             \
+    }\
 }
 
 GET_VALUE_INT64_MRB_CGROUP(cpu, cfs_quota_us);
@@ -351,11 +360,12 @@ static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self) 
     char *val;                                                                                \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
                                                                                               \
-    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key, &val)) != 0) {     \
+    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key, &val)) != 0 && code != ECGROUPVALUENOTEXIST) {     \
         mrb_raisef(mrb                                                                        \
             , E_RUNTIME_ERROR                                                                 \
-            , "cgroup_get_value_string " #gname "." #key " failed: %S"                        \
+            , "cgroup_get_value_string " #gname "." #key " failed: %S(%S)"                        \
             , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                    \
+            , mrb_fixnum_value(code)                                    \
         );                                                                                    \
     }                                                                                         \
     if (strcmp(val, "")) {                                                                    \
@@ -382,11 +392,12 @@ static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_va
     char *val;                                                                                          \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");           \
                                                                                                         \
-    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, &val)) != 0) {    \
+    if ((code = cgroup_get_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, &val)) != 0 && code != ECGROUPVALUENOTEXIST) {    \
         mrb_raisef(mrb                                                                                  \
             , E_RUNTIME_ERROR                                                                           \
-            , "cgroup_get_value_string " #gname "." #key1 "." #key2 " failed: %S"                       \
+            , "cgroup_get_value_string " #gname "." #key1 "." #key2 " failed: %S(%S)"                   \
             , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                              \
+            , mrb_fixnum_value(code)                                    \
         );                                                                                              \
     }                                                                                                   \
     if (strcmp(val, "")) {                                                                              \

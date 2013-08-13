@@ -422,19 +422,12 @@ static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self) 
     int code;                                                                                             \
     char *val;                                                                                            \
     mrb_get_args(mrb, "z", &val);                                                                         \
-    if ((code = cgroup_add_value_string(mrb_cg_cxt->cgc , #gname "." #key, val)) != 0) {                  \
-        if ((code = cgroup_set_value_string(mrb_cg_cxt->cgc , #gname "." #key , val)) != 0) {             \
-            mrb_raisef(mrb                                                                                \
-                , E_RUNTIME_ERROR                                                                         \
-                , "cgroup_set_value_string " #gname "." #key " failed: %S"                                \
-                , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                            \
-            );                                                                                            \
-        }                                                                                                 \
-    } else {                                                                                              \
+    if ((code = cgroup_set_value_string(mrb_cg_cxt->cgc , #gname "." #key , val))) {                      \
         mrb_raisef(mrb                                                                                    \
             , E_RUNTIME_ERROR                                                                             \
-            , "cgroup_add_value_string " #gname "." #key " failed: %S"                                    \
+            , "cgroup_set_value_string " #gname "." #key " failed: %S(%S)"                                \
             , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                                \
+            , mrb_fixnum_value(code)                                                                      \
         );                                                                                                \
     }                                                                                                     \
     mrb_iv_set(mrb                                                                                        \
@@ -456,25 +449,18 @@ SET_VALUE_STRING_MRB_CGROUP(cpuset, mems);
 // cgroup_set_value_string (a number of keys are 2)
 //
 #define SET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
-static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                        \
+static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                 \
 {                                                                                                         \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");             \
     int code;                                                                                             \
     char *val;                                                                                            \
     mrb_get_args(mrb, "z", &val);                                                                         \
-    if ((code = cgroup_add_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, val)) != 0) {       \
-        if ((code = cgroup_set_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2 , val)) != 0) {  \
-            mrb_raisef(mrb                                                                                \
-                , E_RUNTIME_ERROR                                                                         \
-                , "cgroup_set_value_string " #gname "." #key1 "." #key2 " failed: %S"                     \
-                , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                            \
-            );                                                                                            \
-        }                                                                                                 \
-    } else {                                                                                              \
+    if ((code = cgroup_set_value_string(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2 , val)) != 0) {      \
         mrb_raisef(mrb                                                                                    \
             , E_RUNTIME_ERROR                                                                             \
-            , "cgroup_add_value_string " #gname "." #key1 "." #key2 " failed: %S"                         \
+            , "cgroup_set_value_string " #gname "." #key1 "." #key2 " failed: %S(%S)"                     \
             , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                                \
+            , mrb_fixnum_value(code)                                                                      \
         );                                                                                                \
     }                                                                                                     \
     mrb_iv_set(mrb                                                                                        \

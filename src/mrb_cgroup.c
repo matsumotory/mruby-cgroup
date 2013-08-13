@@ -118,8 +118,8 @@ static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
     // BUG? : cgroup_create_cgroup returns an error(This kernel does not support this feature), despite actually succeeding
-    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 0))) {
-        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
+    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1))) {
+        //mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
     mrb_cg_cxt->already_exist = 1;
     mrb_iv_set(mrb
@@ -141,8 +141,8 @@ static mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
     // BUG? : cgroup_delete_cgroup returns an error(No such file or directory), despite actually succeeding
-    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 0))) {
-        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_delete faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
+    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1))) {
+        //mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_delete faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
     }
 
     return self;
@@ -474,12 +474,14 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
 
     cgroup = mrb_define_module(mrb, "Cgroup");
     mrb_define_module_function(mrb, cgroup, "create", mrb_cgroup_create, ARGS_NONE());
+    // BUG? cgroup_modify_cgroup fail fclose on cg_set_control_value: line:1389 when get existing cgroup controller
+    //mrb_define_module_function(mrb, cgroup, "modify", mrb_cgroup_modify, ARGS_NONE());
+    mrb_define_module_function(mrb, cgroup, "modify", mrb_cgroup_create, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "open", mrb_cgroup_create, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "delete", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "close", mrb_cgroup_delete, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_OPT(1));
     //mrb_define_module_function(mrb, cgroup, "path", mrb_cgroup_get_current_path, ARGS_OPT(1));
-    mrb_define_module_function(mrb, cgroup, "modify", mrb_cgroup_modify, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "exist?", mrb_cgroup_exist_p, ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, ARGS_ANY());
     DONE;

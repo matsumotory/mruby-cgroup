@@ -117,9 +117,39 @@ static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-    // BUG? : cgroup_create_cgroup returns an error(This kernel does not support this feature), despite actually succeeding
-    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1))) {
-        //mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_create faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
+    // BUG1 : cgroup_create_cgroup returns an error(Invalid argument:50016:ECGOTHER), despite actually succeeding
+    // BUG2 : cgroup_delete_cgroup returns an error(This kernel does not support this feature:50029:ECGCANTSETVALUE), despite actually succeeding
+    // REFS : libcgroup/src/api.c 1620 - 1630 comments
+    // 
+    //        error = cg_set_control_value(path,
+    //            cgroup->controller[k]->values[j]->value);
+    //        /*   
+    //         * Should we undo, what we've done in the loops above?
+    //         * An error should not be treated as fatal, since we
+    //         * have several read-only files and several files that
+    //         * are only conditionally created in the child.
+    //         *
+    //         * A middle ground would be to track that there
+    //         * was an error and return a diagnostic value--
+    //         * callers don't get context for the error, but can
+    //         * ignore it specifically if they wish.
+    //         */
+    //        if (error) {
+    //            cgroup_dbg("failed to set %s: %s (%d)\n",
+    //                path,
+    //                cgroup_strerror(error), error);
+    //            retval = ECGCANTSETVALUE;
+    //            continue;
+    //        }    
+    //
+    
+    if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1)) && code != ECGOTHER && code != ECGCANTSETVALUE) {
+        mrb_raisef(mrb
+            , E_RUNTIME_ERROR
+            , "cgroup_create failed: %S(%S)"
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))
+            , mrb_fixnum_value(code)
+        );
     }
     mrb_cg_cxt->already_exist = 1;
     mrb_iv_set(mrb
@@ -140,9 +170,14 @@ static mrb_value mrb_cgroup_delete(mrb_state *mrb, mrb_value self)
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-    // BUG? : cgroup_delete_cgroup returns an error(No such file or directory), despite actually succeeding
-    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1))) {
-        //mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_delete faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
+    // BUG1 : cgroup_delete_cgroup returns an error(No such file or directory:50016:ECGOTHER), despite actually succeeding
+    if ((code = cgroup_delete_cgroup(mrb_cg_cxt->cg, 1)) && code != ECGOTHER) {
+        mrb_raisef(mrb
+            , E_RUNTIME_ERROR
+            , "cgroup_delete faild: %S(%S)"
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))
+            , mrb_fixnum_value(code)
+        );
     }
 
     return self;

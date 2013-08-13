@@ -36,8 +36,6 @@ rate.cfs_quota_us = 50000
 core.cpus = core.mems = "2"
 rate.modify
 core.modify
-rate.attach
-core.attach
 (1..100000000).each do |i| end
 
 # CPU core 0,1,2 and rate 90%
@@ -46,8 +44,6 @@ rate.cfs_quota_us = 90000
 core.cpus = core.mems = "0-2"
 rate.modify
 core.modify
-rate.attach
-core.attach
 (1..100000000).each do |i| end
 
 puts "delete /test group"

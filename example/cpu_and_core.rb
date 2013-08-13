@@ -1,20 +1,3 @@
-# Cgroup Module for mruby
-mruby cgroup module using libcgroup
-
-## install by mrbgems
- - add conf.gem line to `build_config.rb`
-```ruby
-MRuby::Build.new do |conf|
-
-    # ... (snip) ...
-
-    conf.gem :git => 'https://github.com/matsumoto-r/mruby-cgroup.git'
-end
-```
-
-## example
-
-```ruby
 rate = Cgroup::CPU.new "test"
 core = Cgroup::CPUSET.new "test"
 
@@ -53,11 +36,4 @@ core.attach
 puts "delete /test group"
 rate.delete
 core.delete
-```
-
-# License
-under the MIT License:
-
-* http://www.opensource.org/licenses/mit-license.php
-
 

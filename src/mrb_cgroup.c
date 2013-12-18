@@ -78,7 +78,7 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
     mrb_cgroup_context *c;
     mrb_value context;
 
-    context = mrb_iv_get(mrb, self, mrb_intern(mrb, ctx_flag));
+    context = mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, ctx_flag));
     Data_Get_Struct(mrb, context, &mrb_cgroup_context_type, c);
     if (!c)
         mrb_raise(mrb, E_RUNTIME_ERROR, "get mrb_cgroup_context failed");
@@ -102,7 +102,7 @@ static mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
     }
     mrb_iv_set(mrb
         , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")
         , mrb_obj_value(Data_Wrap_Struct(mrb
             , mrb->object_class
             , &mrb_cgroup_context_type
@@ -156,7 +156,7 @@ static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
     mrb_cg_cxt->already_exist = 1;
     mrb_iv_set(mrb
         , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")
         , mrb_obj_value(Data_Wrap_Struct(mrb
             , mrb->object_class
             , &mrb_cgroup_context_type
@@ -208,7 +208,7 @@ static mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
     }
     mrb_iv_set(mrb
         , self
-        , mrb_intern(mrb, "mrb_cgroup_context")
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")
         , mrb_obj_value(Data_Wrap_Struct(mrb
             , mrb->object_class
             , &mrb_cgroup_context_type
@@ -274,7 +274,7 @@ static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)      
     }                                                                                                           \
     mrb_iv_set(mrb                                                                                              \
         , self                                                                                                  \
-        , mrb_intern(mrb, "mrb_cgroup_context")                                                                 \
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")                                                                 \
         , mrb_obj_value(Data_Wrap_Struct(mrb                                                                    \
             , mrb->object_class                                                                                 \
             , &mrb_cgroup_context_type                                                                          \
@@ -306,7 +306,7 @@ static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self) 
     }                                                                                         \
     mrb_iv_set(mrb                                                                            \
         , self                                                                                \
-        , mrb_intern(mrb, "mrb_cgroup_context")                                               \
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")                                               \
         , mrb_obj_value(Data_Wrap_Struct(mrb                                                  \
             , mrb->object_class                                                               \
             , &mrb_cgroup_context_type                                                        \
@@ -434,7 +434,7 @@ static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self) 
     }                                                                                                     \
     mrb_iv_set(mrb                                                                                        \
         , self                                                                                            \
-        , mrb_intern(mrb, "mrb_cgroup_context")                                                           \
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")                                                           \
         , mrb_obj_value(Data_Wrap_Struct(mrb                                                              \
             , mrb->object_class                                                                           \
             , &mrb_cgroup_context_type                                                                    \
@@ -467,7 +467,7 @@ static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_va
     }                                                                                                     \
     mrb_iv_set(mrb                                                                                        \
         , self                                                                                            \
-        , mrb_intern(mrb, "mrb_cgroup_context")                                                           \
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")                                                           \
         , mrb_obj_value(Data_Wrap_Struct(mrb                                                              \
             , mrb->object_class                                                                           \
             , &mrb_cgroup_context_type                                                                    \
@@ -488,12 +488,12 @@ static mrb_value mrb_cgroup_get_cpuacct_obj(mrb_state *mrb, mrb_value self)
     struct RClass *cpuacct_class, *cgroup_class;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
-    cpuacct_value = mrb_iv_get(mrb, self, mrb_intern(mrb, "cpuacct_obj"));
+    cpuacct_value = mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, "cpuacct_obj"));
     if (mrb_nil_p(cpuacct_value)) {
         cgroup_class = mrb_class_get(mrb, "Cgroup");
         cpuacct_class = (struct RClass*)mrb_class_ptr(mrb_const_get(mrb, mrb_obj_value(cgroup_class), mrb_intern_cstr(mrb, "CPUACCT")));
         cpuacct_value = mrb_obj_new(mrb, cpuacct_class, 1, &mrb_cg_cxt->group_name);
-        mrb_iv_set(mrb, self, mrb_intern(mrb, "cpuacct_obj"), cpuacct_value);
+        mrb_iv_set(mrb, self, mrb_intern_cstr(mrb, "cpuacct_obj"), cpuacct_value);
     }
     return cpuacct_value;
 }

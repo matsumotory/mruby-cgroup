@@ -521,7 +521,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     DONE;
 
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);
-    mrb_include_module(mrb, cpu, mrb_class_get(mrb, "Cgroup"));
+    mrb_include_module(mrb, cpu, mrb_module_get(mrb, "Cgroup"));
     mrb_define_method(mrb, cpu, "initialize", mrb_cgroup_cpu_init, ARGS_ANY());
     mrb_define_method(mrb, cpu, "cfs_quota_us=", mrb_cgroup_set_cpu_cfs_quota_us, ARGS_ANY());
     mrb_define_method(mrb, cpu, "cfs_quota_us", mrb_cgroup_get_cpu_cfs_quota_us, ARGS_NONE());
@@ -538,7 +538,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     DONE;
 
     cpuacct = mrb_define_class_under(mrb, cgroup, "CPUACCT", mrb->object_class);
-    mrb_include_module(mrb, cpuacct, mrb_class_get(mrb, "Cgroup"));
+    mrb_include_module(mrb, cpuacct, mrb_module_get(mrb, "Cgroup"));
     mrb_define_method(mrb, cpuacct, "initialize", mrb_cgroup_cpuacct_init, ARGS_REQ(1));
     mrb_define_method(mrb, cpuacct, "stat", mrb_cgroup_get_cpuacct_stat, ARGS_NONE());
     mrb_define_method(mrb, cpuacct, "usage", mrb_cgroup_get_cpuacct_usage, ARGS_NONE());
@@ -547,7 +547,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     DONE;
 
     cpuset = mrb_define_class_under(mrb, cgroup, "CPUSET", mrb->object_class);
-    mrb_include_module(mrb, cpuset, mrb_class_get(mrb, "Cgroup"));
+    mrb_include_module(mrb, cpuset, mrb_module_get(mrb, "Cgroup"));
     mrb_define_method(mrb, cpuset, "initialize", mrb_cgroup_cpuset_init, ARGS_ANY());
     mrb_define_method(mrb, cpuset, "cpus=", mrb_cgroup_set_cpuset_cpus, ARGS_REQ(1));
     mrb_define_method(mrb, cpuset, "cpus",  mrb_cgroup_get_cpuset_cpus, ARGS_NONE());
@@ -556,7 +556,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     DONE;
 
     blkio = mrb_define_class_under(mrb, cgroup, "BLKIO", mrb->object_class);
-    mrb_include_module(mrb, blkio, mrb_class_get(mrb, "Cgroup"));
+    mrb_include_module(mrb, blkio, mrb_module_get(mrb, "Cgroup"));
     mrb_define_method(mrb, blkio, "initialize", mrb_cgroup_blkio_init, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_read_bps_device=", mrb_cgroup_set_blkio_throttle_read_bps_device, ARGS_ANY());
     mrb_define_method(mrb, blkio, "throttle_read_bps_device", mrb_cgroup_get_blkio_throttle_read_bps_device, ARGS_NONE());

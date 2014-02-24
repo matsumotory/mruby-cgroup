@@ -14,3 +14,13 @@ before_script:
   - cp -fp ../mruby-cgroup/.travis_build_config.rb build_config.rb
 script: 
   - rake all test
+notifications:
+  irc:
+    channels:
+      - "irc.freenode.org#hosting-ja"
+    on_success: always
+    on_failure: always
+    use_notice: true
+    skip_join: true
+    template:
+        - "[%{message}] %{repository} (%{commit}) by %{author}: See %{build_url}"

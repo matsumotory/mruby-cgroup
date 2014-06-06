@@ -34,7 +34,7 @@
 
 #include "mruby.h"
 #include "mruby/data.h"
-#include "mruby/variable.h" 
+#include "mruby/variable.h"
 #include "mruby/array.h"
 #include "mruby/string.h"
 #include "mruby/class.h"
@@ -92,7 +92,7 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
 
 /*
 static mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
-{   
+{
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
@@ -115,17 +115,17 @@ static mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
 */
 
 static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
-{   
+{
     int code;
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
 
     // BUG1 : cgroup_create_cgroup returns an error(Invalid argument:50016:ECGOTHER), despite actually succeeding
     // BUG2 : cgroup_delete_cgroup returns an error(This kernel does not support this feature:50029:ECGCANTSETVALUE), despite actually succeeding
     // REFS : libcgroup/src/api.c 1620 - 1630 comments
-    // 
+    //
     //        error = cg_set_control_value(path,
     //            cgroup->controller[k]->values[j]->value);
-    //        /*   
+    //        /*
     //         * Should we undo, what we've done in the loops above?
     //         * An error should not be treated as fatal, since we
     //         * have several read-only files and several files that
@@ -142,9 +142,9 @@ static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
     //                cgroup_strerror(error), error);
     //            retval = ECGCANTSETVALUE;
     //            continue;
-    //        }    
+    //        }
     //
-    
+
     if ((code = cgroup_create_cgroup(mrb_cg_cxt->cg, 1)) && code != ECGOTHER && code != ECGCANTSETVALUE) {
         mrb_raisef(mrb
             , E_RUNTIME_ERROR
@@ -196,7 +196,7 @@ static mrb_value mrb_cgroup_exist_p(mrb_state *mrb, mrb_value self)
 //
 
 static mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
-{   
+{
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
     mrb_value pid = mrb_nil_value();
     mrb_get_args(mrb, "|i", &pid);

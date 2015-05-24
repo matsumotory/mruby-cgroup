@@ -355,6 +355,8 @@ GET_VALUE_INT64_MRB_CGROUP(cpu, rt_runtime_us);
 GET_VALUE_INT64_MRB_CGROUP(cpu, shares);
 GET_VALUE_INT64_MRB_CGROUP(cpuacct, usage);
 GET_VALUE_INT64_MRB_CGROUP(memory, limit_in_bytes);
+GET_VALUE_INT64_MRB_CGROUP(memory, usage_in_bytes);
+GET_VALUE_INT64_MRB_CGROUP(memory, max_usage_in_bytes);
 
 //
 // cgroup_get_value_string
@@ -662,6 +664,8 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, memory, "initialize", mrb_cgroup_memory_init, ARGS_ANY());
     mrb_define_method(mrb, memory, "limit_in_bytes=", mrb_cgroup_set_memory_limit_in_bytes, ARGS_ANY());
     mrb_define_method(mrb, memory, "limit_in_bytes", mrb_cgroup_get_memory_limit_in_bytes, ARGS_NONE());
+    mrb_define_method(mrb, memory, "usage_in_bytes", mrb_cgroup_get_memory_usage_in_bytes, ARGS_NONE());
+    mrb_define_method(mrb, memory, "max_usage_in_bytes", mrb_cgroup_get_memory_max_usage_in_bytes, ARGS_NONE());
     mrb_define_method(mrb, memory, "cgroup_event_control=", mrb_cgroup_set_memory_cgroup_event_control, ARGS_ANY());
     mrb_define_method(mrb, memory, "oom_control=", mrb_cgroup_set_memory_oom_control, ARGS_ANY());
     mrb_define_method(mrb, memory, "oom_control", mrb_cgroup_get_memory_oom_control, ARGS_NONE());

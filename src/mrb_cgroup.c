@@ -518,6 +518,58 @@ static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_va
 
 SET_VALUE_STRING_MRB_CGROUP_KEY2_NOT_USE_GNAME(memory, cgroup, event_control);
 
+//
+// cgroup_set_bool
+//
+#define SET_VALUE_BOOL_MRB_CGROUP(gname, key) \
+static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
+{                                                                                             \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
+    mrb_bool val;                                                                              \
+    int code;                                                                                 \
+    mrb_get_args(mrb, "b", &val);                                                             \
+                                                                                              \
+    if ((code = cgroup_set_value_bool(mrb_cg_cxt->cgc, #gname "." #key, (bool)val))) {                      \
+        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_set_value_book " #gname "." #key " failed: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code))); \
+    }                                                                                         \
+    mrb_iv_set(mrb                                                                            \
+        , self                                                                                \
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")                                               \
+        , mrb_obj_value(Data_Wrap_Struct(mrb                                                  \
+            , mrb->object_class                                                               \
+            , &mrb_cgroup_context_type                                                        \
+            , (void *)mrb_cg_cxt)                                                             \
+        )                                                                                     \
+    );                                                                                        \
+                                                                                              \
+    return self;                                                                              \
+}
+
+SET_VALUE_BOOL_MRB_CGROUP(memory, oom_control);
+
+#define GET_VALUE_BOOL_MRB_CGROUP(gname, key) \
+static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
+{                                                                                             \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
+    bool val;                                                                              \
+    int code;                                                                                 \
+    if ((code = cgroup_get_value_bool(mrb_cg_cxt->cgc, #gname "." #key, &val)) && code != ECGROUPVALUENOTEXIST) {            \
+        mrb_raisef(mrb \
+            , E_RUNTIME_ERROR \
+            , "cgroup_get_value_bool " #gname "." #key " failed: %S(%S)" \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code)) \
+            , mrb_fixnum_value(code) \
+        ); \
+    }                                                                                         \
+    if (code == ECGROUPVALUENOTEXIST) {\
+        return mrb_nil_value();\
+    } else {\
+        return mrb_bool_value(val);                                                             \
+    }\
+}
+
+GET_VALUE_BOOL_MRB_CGROUP(memory, oom_control);
+
 static mrb_value mrb_cgroup_get_cpuacct_obj(mrb_state *mrb, mrb_value self)
 {
     mrb_value cpuacct_value;
@@ -611,6 +663,8 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, memory, "limit_in_bytes=", mrb_cgroup_set_memory_limit_in_bytes, ARGS_ANY());
     mrb_define_method(mrb, memory, "limit_in_bytes", mrb_cgroup_get_memory_limit_in_bytes, ARGS_NONE());
     mrb_define_method(mrb, memory, "cgroup_event_control=", mrb_cgroup_set_memory_cgroup_event_control, ARGS_ANY());
+    mrb_define_method(mrb, memory, "oom_control=", mrb_cgroup_set_memory_oom_control, ARGS_ANY());
+    mrb_define_method(mrb, memory, "oom_control", mrb_cgroup_get_memory_oom_control, ARGS_NONE());
     DONE;
 }
 

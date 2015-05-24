@@ -486,6 +486,38 @@ SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_bps_device);
 SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
 SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 
+//
+// cgroup_set_value_string (a number of keys are 2)
+//
+#define SET_VALUE_STRING_MRB_CGROUP_KEY2_NOT_USE_GNAME(gname, key1, key2) \
+static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                 \
+{                                                                                                         \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");             \
+    int code;                                                                                             \
+    char *val;                                                                                            \
+    mrb_get_args(mrb, "z", &val);                                                                         \
+    if ((code = cgroup_set_value_string(mrb_cg_cxt->cgc , #key1 "." #key2 , val)) != 0) {                 \
+        mrb_raisef(mrb                                                                                    \
+            , E_RUNTIME_ERROR                                                                             \
+            , "cgroup_set_value_string " #key1 "." #key2 " failed: %S(%S)"                                \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                                \
+            , mrb_fixnum_value(code)                                                                      \
+        );                                                                                                \
+    }                                                                                                     \
+    mrb_iv_set(mrb                                                                                        \
+        , self                                                                                            \
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")                                                      \
+        , mrb_obj_value(Data_Wrap_Struct(mrb                                                              \
+            , mrb->object_class                                                                           \
+            , &mrb_cgroup_context_type                                                                    \
+            , (void *)mrb_cg_cxt)                                                                         \
+        )                                                                                                 \
+    );                                                                                                    \
+    return self;                                                                                          \
+}
+
+SET_VALUE_STRING_MRB_CGROUP_KEY2_NOT_USE_GNAME(memory, cgroup, event_control);
+
 static mrb_value mrb_cgroup_get_cpuacct_obj(mrb_state *mrb, mrb_value self)
 {
     mrb_value cpuacct_value;
@@ -578,6 +610,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, memory, "initialize", mrb_cgroup_memory_init, ARGS_ANY());
     mrb_define_method(mrb, memory, "limit_in_bytes=", mrb_cgroup_set_memory_limit_in_bytes, ARGS_ANY());
     mrb_define_method(mrb, memory, "limit_in_bytes", mrb_cgroup_get_memory_limit_in_bytes, ARGS_ANY());
+    mrb_define_method(mrb, memory, "cgroup_event_control=", mrb_cgroup_set_memory_cgroup_event_control, ARGS_ANY());
     DONE;
 }
 

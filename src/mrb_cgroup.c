@@ -74,7 +74,7 @@ static const struct mrb_data_type mrb_cgroup_context_type = {
     "mrb_cgroup_context", mrb_cgroup_context_free,
 };
 
-static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value self, char *ctx_flag)
+static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value self, const char *ctx_flag)
 {
     mrb_cgroup_context *c;
     mrb_value context;

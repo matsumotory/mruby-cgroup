@@ -609,7 +609,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_include_module(mrb, memory, mrb_module_get(mrb, "Cgroup"));
     mrb_define_method(mrb, memory, "initialize", mrb_cgroup_memory_init, ARGS_ANY());
     mrb_define_method(mrb, memory, "limit_in_bytes=", mrb_cgroup_set_memory_limit_in_bytes, ARGS_ANY());
-    mrb_define_method(mrb, memory, "limit_in_bytes", mrb_cgroup_get_memory_limit_in_bytes, ARGS_ANY());
+    mrb_define_method(mrb, memory, "limit_in_bytes", mrb_cgroup_get_memory_limit_in_bytes, ARGS_NONE());
     mrb_define_method(mrb, memory, "cgroup_event_control=", mrb_cgroup_set_memory_cgroup_event_control, ARGS_ANY());
     DONE;
 }

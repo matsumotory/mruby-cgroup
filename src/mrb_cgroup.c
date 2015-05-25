@@ -256,11 +256,11 @@ SET_MRB_CGROUP_INIT_GROUP(memory);
 static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
 {                                                                                             \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context"); \
-    mrb_int val;                                                                              \
+    mrb_value val;                                                                              \
     int code;                                                                                 \
-    mrb_get_args(mrb, "i", &val);                                                             \
+    mrb_get_args(mrb, "o", &val);                                                             \
                                                                                               \
-    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, val))) {                      \
+    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, mrb_fixnum(val)))) {                      \
         mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_set_value_int64 " #gname "." #key " failed: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code))); \
     }                                                                                         \
     mrb_iv_set(mrb                                                                            \
@@ -481,9 +481,9 @@ static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_va
 {                                                                                                         \
     mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");             \
     int code;                                                                                             \
-    int64_t val;                                                                                            \
-    mrb_get_args(mrb, "z", &val);                                                                         \
-    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2 , val)) != 0) {      \
+    mrb_value val;                                                                                            \
+    mrb_get_args(mrb, "o", &val);                                                                         \
+    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2 , mrb_fixnum(val))) != 0) {      \
         mrb_raisef(mrb                                                                                    \
             , E_RUNTIME_ERROR                                                                             \
             , "cgroup_set_value_int64 " #gname "." #key1 "." #key2 " failed: %S(%S)"                     \

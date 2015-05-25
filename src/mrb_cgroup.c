@@ -91,30 +91,6 @@ static mrb_cgroup_context *mrb_cgroup_get_context(mrb_state *mrb,  mrb_value sel
 // group
 //
 
-/*
-static mrb_value mrb_cgroup_modify(mrb_state *mrb, mrb_value self)
-{
-    int code;
-    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-
-    // BUG? : cgroup_modify_cgroup returns an error(Invalid argument), when run modify method from other instance.
-    if ((code = cgroup_modify_cgroup(mrb_cg_cxt->cg))) {
-        mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_modify faild: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code)));
-    }
-    mrb_iv_set(mrb
-        , self
-        , mrb_intern_cstr(mrb, "mrb_cgroup_context")
-        , mrb_obj_value(Data_Wrap_Struct(mrb
-            , mrb->object_class
-            , &mrb_cgroup_context_type
-            , (void *)mrb_cg_cxt)
-        )
-    );
-
-    return self;
-}
-*/
-
 static mrb_value mrb_cgroup_create(mrb_state *mrb, mrb_value self)
 {
     int code;
@@ -220,27 +196,8 @@ static mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
     return self;
 }
 
-/*
-static mrb_value mrb_cgroup_get_current_path(mrb_state *mrb, mrb_value self)
-{
-    mrb_cgroup_context *mrb_cg_ctx = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
-    mrb_int pid = 0;
-    char *path;
-
-    mrb_get_args(mrb, "|i", &pid);
-    if (pid > 0) {
-        cgroup_get_current_controller_path(getpid(), mrb_cg_ctx->cgc, &path);
-    } else {
-        cgroup_get_current_controller_path((pid_t)pid, mrb_cg_ctx->cgc, &path);
-    }
-
-    return mrb_str_new_cstr(mrb, path);
-}
-*/
-
 //
 // init
-//
 //
 #define SET_MRB_CGROUP_INIT_GROUP(gname) \
 static mrb_value mrb_cgroup_##gname##_init(mrb_state *mrb, mrb_value self)                                      \
@@ -391,7 +348,6 @@ GET_VALUE_STRING_MRB_CGROUP(cpuacct, usage_percpu);
 
 //
 // cgroup_get_value_string (a number of keys are 2)
-    //mrb_define_method(mrb, cpu, "loop", mrb_cgroup_loop, ARGS_ANY());
 //
 #define GET_VALUE_STRING_MRB_CGROUP_KEY2(gname, key1, key2) \
 static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)               \

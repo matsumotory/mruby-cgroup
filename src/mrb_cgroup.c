@@ -377,6 +377,35 @@ GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
 GET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
 
 //
+// cgroup_get_value_int64 (a number of keys are 2)
+//
+#define GET_VALUE_INT64_MRB_CGROUP_KEY2(gname, key1, key2) \
+static mrb_value mrb_cgroup_get_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)               \
+{                                                                                                       \
+    int code;                                                                                           \
+    int64_t val;                                                                                          \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");           \
+                                                                                                        \
+    if ((code = cgroup_get_value_int64(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2, &val)) != 0 && code != ECGROUPVALUENOTEXIST) {    \
+        mrb_raisef(mrb                                                                                  \
+            , E_RUNTIME_ERROR                                                                           \
+            , "cgroup_get_value_int64 " #gname "." #key1 "." #key2 " failed: %S(%S)"                   \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                              \
+            , mrb_fixnum_value(code)                                    \
+        );                                                                                              \
+    }                                                                                                   \
+    if (code == ECGROUPVALUENOTEXIST) {\
+        return mrb_nil_value();\
+    } else {\
+        return mrb_fixnum_value(val);                                                             \
+    }\
+}
+
+GET_VALUE_INT64_MRB_CGROUP_KEY2(memory, memsw, limit_in_bytes);
+GET_VALUE_INT64_MRB_CGROUP_KEY2(memory, memsw, usage_in_bytes);
+GET_VALUE_INT64_MRB_CGROUP_KEY2(memory, memsw, max_usage_in_bytes);
+
+//
 // cgroup_set_value_string
 //
 #define SET_VALUE_STRING_MRB_CGROUP(gname, key) \
@@ -443,6 +472,38 @@ SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_bps_device);
 SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_bps_device);
 SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, read_iops_device);
 SET_VALUE_STRING_MRB_CGROUP_KEY2(blkio, throttle, write_iops_device);
+
+//
+// cgroup_set_value_int64 (a number of keys are 2)
+//
+#define SET_VALUE_INT64_CGROUP_KEY2(gname, key1, key2) \
+static mrb_value mrb_cgroup_set_##gname##_##key1##_##key2(mrb_state *mrb, mrb_value self)                 \
+{                                                                                                         \
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");             \
+    int code;                                                                                             \
+    int64_t val;                                                                                            \
+    mrb_get_args(mrb, "z", &val);                                                                         \
+    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc , #gname "." #key1 "." #key2 , val)) != 0) {      \
+        mrb_raisef(mrb                                                                                    \
+            , E_RUNTIME_ERROR                                                                             \
+            , "cgroup_set_value_int64 " #gname "." #key1 "." #key2 " failed: %S(%S)"                     \
+            , mrb_str_new_cstr(mrb, cgroup_strerror(code))                                                \
+            , mrb_fixnum_value(code)                                                                      \
+        );                                                                                                \
+    }                                                                                                     \
+    mrb_iv_set(mrb                                                                                        \
+        , self                                                                                            \
+        , mrb_intern_cstr(mrb, "mrb_cgroup_context")                                                           \
+        , mrb_obj_value(Data_Wrap_Struct(mrb                                                              \
+            , mrb->object_class                                                                           \
+            , &mrb_cgroup_context_type                                                                    \
+            , (void *)mrb_cg_cxt)                                                                         \
+        )                                                                                                 \
+    );                                                                                                    \
+    return self;                                                                                          \
+}
+
+SET_VALUE_INT64_CGROUP_KEY2(memory, memsw, limit_in_bytes);
 
 //
 // cgroup_set_value_string (a number of keys are 2)
@@ -625,6 +686,10 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, memory, "cgroup_event_control=", mrb_cgroup_set_memory_cgroup_event_control, ARGS_ANY());
     mrb_define_method(mrb, memory, "oom_control=", mrb_cgroup_set_memory_oom_control, ARGS_ANY());
     mrb_define_method(mrb, memory, "oom_control", mrb_cgroup_get_memory_oom_control, ARGS_NONE());
+    mrb_define_method(mrb, memory, "memsw_limit_in_bytes=", mrb_cgroup_set_memory_memsw_limit_in_bytes, ARGS_ANY());
+    mrb_define_method(mrb, memory, "memsw_limit_in_bytes", mrb_cgroup_get_memory_memsw_limit_in_bytes, ARGS_NONE());
+    mrb_define_method(mrb, memory, "memsw_usage_in_bytes", mrb_cgroup_get_memory_memsw_usage_in_bytes, ARGS_NONE());
+    mrb_define_method(mrb, memory, "memsw_max_usage_in_bytes", mrb_cgroup_get_memory_memsw_max_usage_in_bytes, ARGS_NONE());
     DONE;
 }
 

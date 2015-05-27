@@ -260,7 +260,7 @@ static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self) 
     int code;                                                                                 \
     mrb_get_args(mrb, "o", &val);                                                             \
                                                                                               \
-    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, mrb_fixnum(val)))) {                      \
+    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, (int64_t)mrb_float(val)))) {                      \
         mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_set_value_int64 " #gname "." #key " failed: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code))); \
     }                                                                                         \
     mrb_iv_set(mrb                                                                            \

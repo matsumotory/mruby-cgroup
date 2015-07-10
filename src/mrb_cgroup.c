@@ -38,6 +38,7 @@
 #include "mruby/array.h"
 #include "mruby/string.h"
 #include "mruby/class.h"
+#include "mruby/numeric.h"
 
 #define BLKIO_STRING_SIZE 64
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -260,7 +261,7 @@ static mrb_value mrb_cgroup_set_##gname##_##key(mrb_state *mrb, mrb_value self) 
     int code;                                                                                 \
     mrb_get_args(mrb, "o", &val);                                                             \
                                                                                               \
-    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, (int64_t)mrb_float(val)))) {                      \
+    if ((code = cgroup_set_value_int64(mrb_cg_cxt->cgc, #gname "." #key, (int64_t)mrb_to_flo(mrb, val)))) {                      \
         mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_set_value_int64 " #gname "." #key " failed: %S", mrb_str_new_cstr(mrb, cgroup_strerror(code))); \
     }                                                                                         \
     mrb_iv_set(mrb                                                                            \

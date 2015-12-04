@@ -7,20 +7,5 @@ before_install:
 install:
   - sudo apt-get -qq install rake bison git gperf libpam0g-dev autotools-dev
   - gem install rake
-before_script:
-  - cd ../
-  - git clone https://github.com/mruby/mruby.git
-  - cd mruby
-  - cp -fp ../mruby-cgroup/.travis_build_config.rb build_config.rb
-script: 
-  - rake all test
-notifications:
-  irc:
-    channels:
-      - "irc.freenode.org#hosting-ja"
-    on_success: always
-    on_failure: always
-    use_notice: true
-    skip_join: true
-    template:
-        - "[%{message}] %{repository} (%{commit}) by %{author}: See %{build_url}"
+script:
+  - rake

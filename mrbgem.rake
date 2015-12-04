@@ -9,7 +9,10 @@ MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
     $?.success?
   end
 
-  next unless is_in_linux?
+  unless is_in_linux?
+    puts "skip libcgroup build"
+    next
+  end
 
   require 'open3'
 

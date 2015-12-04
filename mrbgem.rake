@@ -51,6 +51,7 @@ MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
         'PREFIX' => libcgroup_build_dir
       }
 
+      run_command e, "git checkout ce167ed16147bb68fa1b31633b19de77780d5f2b ."
       run_command e, "./configure --prefix=#{libcgroup_build_dir} --enable-static"
       run_command e, "make"
       run_command e, "make install"

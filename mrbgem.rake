@@ -8,6 +8,10 @@ MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
   libcgroup_dir = "#{build_dir}/libcgroup"
   libcgroup_build_dir = "#{build_dir}/libcgroup/build"
 
+  task :clean do
+    FileUtils.rm_rf [libcgroup_dir]
+  end
+
   def run_command env, command
     STDOUT.sync = true
     puts "build: [exec] #{command}"

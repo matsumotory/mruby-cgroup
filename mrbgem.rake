@@ -5,7 +5,7 @@ MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
   spec.linker.libraries << ['pthread', 'rt']
 
   def is_in_linux?
-    `grep -q docker /proc/self/cgroup`
+    `grep -q cpu /proc/self/cgroup`
     $?.success?
   end
 

@@ -1,7 +1,15 @@
+
 MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
   spec.license = 'MIT'
   spec.authors = 'MATSUMOTO Ryosuke'
   spec.linker.libraries << ['pthread', 'rt']
+
+  def is_in_linux?
+    `grep -q docker /proc/self/cgroup`
+    $?.success?
+  end
+
+  next unless is_in_linux?
 
   require 'open3'
 

@@ -5,7 +5,7 @@ compiler:
 before_install:
   - sudo apt-get -qq update
 install:
-  - sudo apt-get -qq install rake bison git gperf libpam0g-dev autotools-dev
+  - sudo apt-get -qq install rake bison git gperf libpam0g-dev autotools-dev cgroup-lite
   - gem install rake
 script:
   - rake

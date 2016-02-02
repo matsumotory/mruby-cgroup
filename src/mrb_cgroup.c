@@ -48,7 +48,8 @@ typedef enum {
     MRB_CGROUP_cpuset,
     MRB_CGROUP_cpuacct,
     MRB_CGROUP_blkio,
-    MRB_CGROUP_memory
+    MRB_CGROUP_memory,
+    MRB_CGROUP_pids
 } group_type_t;
 typedef struct cgroup cgroup_t;
 typedef struct cgroup_controller cgroup_controller_t;
@@ -249,6 +250,7 @@ SET_MRB_CGROUP_INIT_GROUP(cpuset);
 SET_MRB_CGROUP_INIT_GROUP(cpuacct);
 SET_MRB_CGROUP_INIT_GROUP(blkio);
 SET_MRB_CGROUP_INIT_GROUP(memory);
+SET_MRB_CGROUP_INIT_GROUP(pids);
 
 //
 // cgroup_set_value_int64
@@ -284,6 +286,7 @@ SET_VALUE_INT64_MRB_CGROUP(cpu, rt_runtime_us);
 SET_VALUE_INT64_MRB_CGROUP(cpu, shares);
 SET_VALUE_INT64_MRB_CGROUP(cpuacct, usage);
 SET_VALUE_INT64_MRB_CGROUP(memory, limit_in_bytes);
+SET_VALUE_INT64_MRB_CGROUP(pids, max);
 
 #define GET_VALUE_INT64_MRB_CGROUP(gname, key) \
 static mrb_value mrb_cgroup_get_##gname##_##key(mrb_state *mrb, mrb_value self)                      \
@@ -315,6 +318,8 @@ GET_VALUE_INT64_MRB_CGROUP(cpuacct, usage);
 GET_VALUE_INT64_MRB_CGROUP(memory, limit_in_bytes);
 GET_VALUE_INT64_MRB_CGROUP(memory, usage_in_bytes);
 GET_VALUE_INT64_MRB_CGROUP(memory, max_usage_in_bytes);
+GET_VALUE_INT64_MRB_CGROUP(pids, current);
+GET_VALUE_INT64_MRB_CGROUP(pids, max);
 
 //
 // cgroup_get_value_string
@@ -614,6 +619,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     struct RClass *cpuset;
     struct RClass *blkio;
     struct RClass *memory;
+    struct RClass *pids;
 
     cgroup = mrb_define_module(mrb, "Cgroup");
     mrb_define_module_function(mrb, cgroup, "create", mrb_cgroup_create, MRB_ARGS_NONE());
@@ -691,6 +697,14 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     mrb_define_method(mrb, memory, "memsw_limit_in_bytes", mrb_cgroup_get_memory_memsw_limit_in_bytes, MRB_ARGS_NONE());
     mrb_define_method(mrb, memory, "memsw_usage_in_bytes", mrb_cgroup_get_memory_memsw_usage_in_bytes, MRB_ARGS_NONE());
     mrb_define_method(mrb, memory, "memsw_max_usage_in_bytes", mrb_cgroup_get_memory_memsw_max_usage_in_bytes, MRB_ARGS_NONE());
+    DONE;
+
+    pids = mrb_define_class_under(mrb, cgroup, "PIDS", mrb->object_class);
+    mrb_include_module(mrb, pids, mrb_module_get(mrb, "Cgroup"));
+    mrb_define_method(mrb, pids, "initialize", mrb_cgroup_pids_init, MRB_ARGS_ANY());
+    mrb_define_method(mrb, pids, "max=", mrb_cgroup_set_pids_max, MRB_ARGS_REQ(1));
+    mrb_define_method(mrb, pids, "max", mrb_cgroup_get_pids_max, MRB_ARGS_NONE());
+    mrb_define_method(mrb, pids, "current", mrb_cgroup_get_pids_current, MRB_ARGS_NONE());
     DONE;
 }
 

@@ -1,15 +1,14 @@
-
 MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
   spec.license = 'MIT'
   spec.authors = 'MATSUMOTO Ryosuke'
   spec.linker.libraries << ['pthread', 'rt']
 
-  def is_in_linux?
+  def cgroup_available?
     `grep -q cpu /proc/self/cgroup`
     $?.success?
   end
 
-  unless is_in_linux?
+  unless cgroup_available?
     puts "skip libcgroup build"
     next
   end

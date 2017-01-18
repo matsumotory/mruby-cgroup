@@ -1,4 +1,4 @@
-# Cgroup Module for mruby   [![Build Status](https://travis-ci.org/matsumoto-r/mruby-cgroup.svg?branch=master)](https://travis-ci.org/matsumoto-r/mruby-cgroup)
+# Cgroup Module for mruby   [![Build Status](https://travis-ci.org/matsumotory/mruby-cgroup.svg?branch=master)](https://travis-ci.org/matsumotory/mruby-cgroup)
 mruby cgroup module using libcgroup
 
 ## install by mrbgems

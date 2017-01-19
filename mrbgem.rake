@@ -52,9 +52,9 @@ MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
         'PREFIX' => libcgroup_build_dir(build)
       }
 
-      run_command e, "git checkout ce167ed16147bb68fa1b31633b19de77780d5f2b ."
+      run_command e, "git checkout 5f1e3a0ca268fea7adcd2469379b98e048f1527d ."
       run_command e, "autoreconf --force --install"
-      run_command e, "./configure --prefix=#{libcgroup_build_dir(build)} --enable-static"
+      run_command e, "./configure --prefix=#{libcgroup_build_dir(build)} --enable-static --disable-shared"
       run_command e, "make"
       run_command e, "make install"
     end

@@ -312,10 +312,10 @@ GET_VALUE_INT64_MRB_CGROUP(pids, max);
             mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_get_value_string " #gname "." #key " failed: %S(%S)",             \
                        mrb_str_new_cstr(mrb, cgroup_strerror(code)), mrb_fixnum_value(code));                          \
         }                                                                                                              \
-        if (strcmp(val, "")) {                                                                                         \
-            return mrb_str_new_cstr(mrb, val);                                                                         \
-        } else {                                                                                                       \
+        if (code == ECGROUPVALUENOTEXIST || !strcmp(val, "")) {                                                        \
             return mrb_nil_value();                                                                                    \
+        } else {                                                                                                       \
+            return mrb_str_new_cstr(mrb, val);                                                                         \
         }                                                                                                              \
     }
 
@@ -340,10 +340,10 @@ GET_VALUE_STRING_MRB_CGROUP(cpuacct, usage_percpu);
             mrb_raisef(mrb, E_RUNTIME_ERROR, "cgroup_get_value_string " #gname "." #key1 "." #key2 " failed: %S(%S)",  \
                        mrb_str_new_cstr(mrb, cgroup_strerror(code)), mrb_fixnum_value(code));                          \
         }                                                                                                              \
-        if (strcmp(val, "")) {                                                                                         \
-            return mrb_str_new_cstr(mrb, val);                                                                         \
-        } else {                                                                                                       \
+        if (code == ECGROUPVALUENOTEXIST || !strcmp(val, "")) {                                                        \
             return mrb_nil_value();                                                                                    \
+        } else {                                                                                                       \
+            return mrb_str_new_cstr(mrb, val);                                                                         \
         }                                                                                                              \
     }
 

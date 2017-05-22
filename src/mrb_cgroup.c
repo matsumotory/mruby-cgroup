@@ -198,6 +198,16 @@ static mrb_value mrb_cgroup_attach(mrb_state *mrb, mrb_value self)
     return self;
 }
 
+static mrb_value mrb_cgroup_group_name(mrb_state *mrb, mrb_value self)
+{
+    mrb_cgroup_context *mrb_cg_cxt = mrb_cgroup_get_context(mrb, self, "mrb_cgroup_context");
+    if (mrb_cg_cxt) {
+        return mrb_cg_cxt->group_name;
+    } else {
+        return mrb_nil_value();
+    }
+}
+
 //
 // init
 //
@@ -633,6 +643,7 @@ void mrb_mruby_cgroup_gem_init(mrb_state *mrb)
     //mrb_define_module_function(mrb, cgroup, "path", mrb_cgroup_get_current_path, MRB_ARGS_OPT(1));
     mrb_define_module_function(mrb, cgroup, "exist?", mrb_cgroup_exist_p, MRB_ARGS_NONE());
     mrb_define_module_function(mrb, cgroup, "attach", mrb_cgroup_attach, MRB_ARGS_ANY());
+    mrb_define_module_function(mrb, cgroup, "group_name", mrb_cgroup_group_name, MRB_ARGS_NONE());
     DONE;
 
     cpu = mrb_define_class_under(mrb, cgroup, "CPU", mrb->object_class);

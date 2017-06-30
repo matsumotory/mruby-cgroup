@@ -199,19 +199,19 @@ static mrb_value mrb_cgroup_group_name(mrb_state *mrb, mrb_value self)
                                                                                                                        \
         mrb_cg_cxt->type = MRB_CGROUP_##gname;                                                                         \
         if (cgroup_init()) {                                                                                           \
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_init " #gname " failed");                                           \
+            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_init " #gname " failed");                                           \
         }                                                                                                              \
         mrb_get_args(mrb, "o", &mrb_cg_cxt->group_name);                                                               \
         mrb_cg_cxt->cg = cgroup_new_cgroup(RSTRING_PTR(mrb_cg_cxt->group_name));                                       \
         if (mrb_cg_cxt->cg == NULL) {                                                                                  \
-            mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_new_cgroup failed");                                                \
+            mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_new_cgroup failed");                                                \
         }                                                                                                              \
                                                                                                                        \
         if (cgroup_get_cgroup(mrb_cg_cxt->cg)) {                                                                       \
             mrb_cg_cxt->already_exist = 0;                                                                             \
             mrb_cg_cxt->cgc = cgroup_add_controller(mrb_cg_cxt->cg, #gname);                                           \
             if (mrb_cg_cxt->cgc == NULL) {                                                                             \
-                mrb_raise(mrb, E_RUNTIME_ERROR, "cgoup_add_controller " #gname " failed");                             \
+                mrb_raise(mrb, E_RUNTIME_ERROR, "cgroup_add_controller " #gname " failed");                             \
             }                                                                                                          \
         } else {                                                                                                       \
             mrb_cg_cxt->already_exist = 1;                                                                             \

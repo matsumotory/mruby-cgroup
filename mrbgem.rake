@@ -13,6 +13,8 @@ MRuby::Gem::Specification.new('mruby-cgroup') do |spec|
     next
   end
 
+  next if spec.respond_to?(:search_package) && spec.search_package('libcgroup')
+
   require 'open3'
 
   def libcgroup_dir(b); "#{b.build_dir}/libcgroup"; end
